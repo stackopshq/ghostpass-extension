@@ -1,0 +1,9 @@
+# Node
+node_modules/
+
+# Build output (extension dépaquetée)
+dist/
+
+# Divers
+*.local
+.DS_Store

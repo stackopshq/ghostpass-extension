@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & check
+    runs-on: ubuntu-latest
+    steps:
+      # Les deux repos sont clonés côte à côte (dépendance file: vers ../ghostpass).
+      - uses: actions/checkout@v4
+        with:
+          path: ghostpass-extension
+      - uses: actions/checkout@v4
+        with:
+          repository: stackopshq/ghostpass
+          path: ghostpass
+          # Repo privé : nécessite un PAT en secret (lecture). À configurer dans les settings.
+          token: ${{ secrets.GHOSTPASS_REPO_TOKEN }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ghostpass
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "v0.13.1"
+      - name: Build du paquet WASM (depuis le repo voisin)
+        working-directory: ghostpass/crates/ghostpass-crypto-wasm
+        run: wasm-pack build --target web
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ghostpass-extension/package-lock.json
+      - name: Install
+        working-directory: ghostpass-extension
+        run: npm ci
+      - name: Type-check
+        working-directory: ghostpass-extension
+        run: npm run check
+      - name: Build
+        working-directory: ghostpass-extension
+        run: npm run build
+
+  secrets:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan
+        run: |
+          VER=8.18.4
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --verbose

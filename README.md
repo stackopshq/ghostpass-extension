@@ -1,0 +1,57 @@
+# GhostPass — Extension navigateur 👻
+
+Extension **Manifest V3** (Chrome/Edge/Firefox) du gestionnaire **zero-knowledge** GhostPass.
+Tout le chiffrement a lieu dans le module **WASM** partagé avec la web app ; le serveur ne voit
+que des blobs chiffrés.
+
+## Architecture
+
+- **Popup** (Svelte) : déverrouille le coffre (email + mot de passe maître), liste/copie les secrets.
+- **Service worker** (`src/background.ts`) : point d'extension (autofill, lock auto — à venir).
+- **Cœur crypto** : réutilise `ghostpass-crypto-wasm` du **repo voisin** `../ghostpass` (dépendance
+  `file:`). Les deux repos doivent être clonés côte à côte sous `~/Projects/`.
+
+```
+ghostpass-extension/
+  manifest.config.ts     manifest MV3 (via @crxjs)
+  src/popup/             UI Svelte du popup
+  src/lib/               crypto (WASM) + client API
+  src/background.ts      service worker
+```
+
+## Prérequis
+
+Le paquet WASM doit être buildé dans le repo voisin :
+
+```bash
+npm run build:wasm   # = wasm-pack build --target web dans ../ghostpass/crates/ghostpass-crypto-wasm
+```
+
+(nécessite la toolchain Rust + `wasm-pack`, et le proxy contourné — voir `../ghostpass`).
+
+## Développer
+
+```bash
+npm install
+npm run dev      # build watch ; charger dist/ en extension non empaquetée
+npm run build    # build de production → dist/
+npm run check    # svelte-check (typage)
+```
+
+Charger dans le navigateur : `chrome://extensions` → **Mode développeur** → **Charger l'extension
+non empaquetée** → sélectionner `dist/`.
+
+## Configuration
+
+Backend ciblé via `host_permissions` (manifest) et `apiBase` (par défaut le backend de dev,
+modifiable via `chrome.storage`). À adapter au domaine de production.
+
+## CI
+
+`/.github/workflows/ci.yml` checkoute aussi le repo `ghostpass` (sibling) pour builder le WASM —
+nécessite un secret `GHOSTPASS_REPO_TOKEN` (lecture du repo privé). Voir le workflow.
+
+## État
+
+MVP : déverrouillage + liste + copie. **À venir** : autofill (content script), lock auto,
+passkeys, configuration du backend dans les options.

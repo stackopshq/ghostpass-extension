@@ -1,0 +1,144 @@
+:root {
+  --bg: #15171c;
+  --surface: #1f2229;
+  --ink: #e7e9ed;
+  --ink-2: #a9afba;
+  --line: #2f333b;
+  --accent: #5394f5;
+  color-scheme: dark;
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 340px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.wrap {
+  padding: 1rem;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0 0 0.8rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  margin-bottom: 0.6rem;
+}
+
+input {
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+button.primary {
+  width: 100%;
+  padding: 0.55rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+}
+
+button.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+button.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-name {
+  font-weight: 600;
+}
+
+.item-sub {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  border-radius: 6px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.error {
+  color: #ef6b72;
+  font-size: 0.82rem;
+  margin-top: 0.6rem;
+}
+
+.muted {
+  color: var(--ink-2);
+  font-size: 0.82rem;
+}
