@@ -5,13 +5,12 @@
   "type": "module",
   "description": "Extension navigateur GhostPass (Manifest V3) — coffre zero-knowledge, autofill",
   "scripts": {
-    "build:wasm": "cd ../ghostpass/crates/ghostpass-crypto-wasm && wasm-pack build --target web",
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "ghostpass-crypto-wasm": "file:../ghostpass/crates/ghostpass-crypto-wasm/pkg"
+    "@stackopshq/ghostpass-crypto-wasm": "^0.0.1"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.0",

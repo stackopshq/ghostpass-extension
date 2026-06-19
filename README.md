@@ -8,8 +8,8 @@ que des blobs chiffrés.
 
 - **Popup** (Svelte) : déverrouille le coffre (email + mot de passe maître), liste/copie les secrets.
 - **Service worker** (`src/background.ts`) : point d'extension (autofill, lock auto — à venir).
-- **Cœur crypto** : réutilise `ghostpass-crypto-wasm` du **repo voisin** `../ghostpass` (dépendance
-  `file:`). Les deux repos doivent être clonés côte à côte sous `~/Projects/`.
+- **Cœur crypto** : dépend de `@stackopshq/ghostpass-crypto-wasm` publié sur **GitHub Packages**
+  (npm) — plus de dépendance cross-repo `file:`.
 
 ```
 ghostpass-extension/
@@ -21,13 +21,14 @@ ghostpass-extension/
 
 ## Prérequis
 
-Le paquet WASM doit être buildé dans le repo voisin :
+Le cœur crypto est tiré de **GitHub Packages**. Authentifie npm (token avec `read:packages`) :
 
 ```bash
-npm run build:wasm   # = wasm-pack build --target web dans ../ghostpass/crates/ghostpass-crypto-wasm
+export NODE_AUTH_TOKEN="$(gh auth token)"   # ou un PAT fine-grained read:packages
 ```
 
-(nécessite la toolchain Rust + `wasm-pack`, et le proxy contourné — voir `../ghostpass`).
+Publier une nouvelle version du WASM : lancer le workflow **Publish WASM** du repo `ghostpass`
+(`gh workflow run publish-wasm.yml -f version=X.Y.Z`), puis bumper la version dans `package.json`.
 
 ## Développer
 
@@ -48,8 +49,9 @@ modifiable via `chrome.storage`). À adapter au domaine de production.
 
 ## CI
 
-`/.github/workflows/ci.yml` checkoute aussi le repo `ghostpass` (sibling) pour builder le WASM —
-nécessite un secret `GHOSTPASS_REPO_TOKEN` (lecture du repo privé). Voir le workflow.
+`/.github/workflows/ci.yml` installe le WASM depuis GitHub Packages via `GITHUB_TOKEN`. Le package
+`@stackopshq/ghostpass-crypto-wasm` doit autoriser ce repo (Package settings → *Manage Actions
+access* → ajouter `ghostpass-extension`), ou être en visibilité *internal*.
 
 ## État
 

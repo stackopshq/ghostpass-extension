@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -17,43 +18,23 @@ jobs:
     name: Build & check
     runs-on: ubuntu-latest
     steps:
-      # Les deux repos sont clonés côte à côte (dépendance file: vers ../ghostpass).
       - uses: actions/checkout@v4
-        with:
-          path: ghostpass-extension
-      - uses: actions/checkout@v4
-        with:
-          repository: stackopshq/ghostpass
-          path: ghostpass
-          # Repo privé : nécessite un PAT en secret (lecture). À configurer dans les settings.
-          token: ${{ secrets.GHOSTPASS_REPO_TOKEN }}
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ghostpass
-      - uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: "v0.13.1"
-      - name: Build du paquet WASM (depuis le repo voisin)
-        working-directory: ghostpass/crates/ghostpass-crypto-wasm
-        run: wasm-pack build --target web
-
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@stackopshq"
           cache: npm
-          cache-dependency-path: ghostpass-extension/package-lock.json
+      # Le cœur WASM est tiré de GitHub Packages (@stackopshq/ghostpass-crypto-wasm).
+      # GITHUB_TOKEN suffit si le package autorise l'accès à ce repo (Package settings →
+      # Manage Actions access → ajouter ghostpass-extension).
       - name: Install
-        working-directory: ghostpass-extension
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Type-check
-        working-directory: ghostpass-extension
         run: npm run check
       - name: Build
-        working-directory: ghostpass-extension
         run: npm run build
 
   secrets:

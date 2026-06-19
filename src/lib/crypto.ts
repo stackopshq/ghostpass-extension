@@ -1,7 +1,7 @@
 // Couche crypto de l'extension : encapsule le module WASM partagé avec la web app.
 // Les clés en clair restent DANS le WASM ; on n'échange que des données chiffrées.
-import init, { Account } from "ghostpass-crypto-wasm";
-import wasmUrl from "ghostpass-crypto-wasm/ghostpass_crypto_wasm_bg.wasm?url";
+import init, { Account } from "@stackopshq/ghostpass-crypto-wasm";
+import wasmUrl from "@stackopshq/ghostpass-crypto-wasm/ghostpass_crypto_wasm_bg.wasm?url";
 
 let ready: Promise<unknown> | null = null;
 
