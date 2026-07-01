@@ -1,7 +1,7 @@
 // Client HTTP vers le backend GhostPass. Contrairement à la web app (proxy Vite `/api`),
 // l'extension doit cibler l'URL complète du backend (voir host_permissions du manifest).
-// L'URL est configurable (chrome.storage) ; défaut = backend de dev.
-const DEFAULT_API_BASE = "http://10.25.0.19:3000";
+// L'URL est configurable depuis la page d'options (chrome.storage) ; défaut = backend de dev local.
+const DEFAULT_API_BASE = "http://localhost:3000";
 
 let apiBase = DEFAULT_API_BASE;
 

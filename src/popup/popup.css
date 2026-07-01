@@ -25,6 +25,12 @@ body {
   padding: 1rem;
 }
 
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
 .brand {
   font-weight: 700;
   font-size: 1.1rem;

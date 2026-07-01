@@ -23,7 +23,13 @@
   let account = $state<AccountHandle | null>(null);
   let items = $state<DecryptedItem[]>([]);
   let search = $state("");
-  let revealed = $state<Set<number>>(new Set());
+  let revealed = $state<Set<string>>(new Set());
+  let copiedId = $state<string | null>(null);
+
+  // Délai d'auto-effacement du presse-papier (ms). Best-effort : si le popup se ferme avant,
+  // le minuteur est détruit avec son contexte — un content script / offscreen le rendra fiable.
+  const CLIPBOARD_CLEAR_MS = 20_000;
+  let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
   const filtered = $derived(
     items.filter((i) => {
@@ -58,7 +64,7 @@
       token = res.token;
       password = "";
       const { items: dtos } = await api.listItems(token);
-      items = dtos.map((d) => decryptItem(account!, d.encryptedKey, d.encryptedData));
+      items = dtos.map((d) => decryptItem(account!, d.id, d.encryptedKey, d.encryptedData));
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     } finally {
@@ -71,25 +77,40 @@
     account = null;
     items = [];
     revealed = new Set();
+    copiedId = null;
   }
 
-  function toggle(i: number) {
+  function toggle(id: string) {
     const s = new Set(revealed);
-    s.has(i) ? s.delete(i) : s.add(i);
+    s.has(id) ? s.delete(id) : s.add(id);
     revealed = s;
   }
 
-  async function copy(text: string) {
+  async function copy(id: string, text: string) {
     try {
       await navigator.clipboard.writeText(text);
+      copiedId = id;
+      if (clearTimer) clearTimeout(clearTimer);
+      clearTimer = setTimeout(() => {
+        // Efface le secret du presse-papier (les gestionnaires font de même après ~20 s).
+        navigator.clipboard.writeText("").catch(() => {});
+        if (copiedId === id) copiedId = null;
+      }, CLIPBOARD_CLEAR_MS);
     } catch {
       /* ignore */
     }
   }
+
+  function openOptions() {
+    chrome.runtime.openOptionsPage?.();
+  }
 </script>
 
 <div class="wrap">
-  <p class="brand">🔐 GhostPass</p>
+  <header class="head">
+    <p class="brand">🔐 GhostPass</p>
+    <button class="icon-btn" title="Options (backend)" aria-label="Options" onclick={openOptions}>⚙</button>
+  </header>
 
   {#if !ready}
     <p class="muted">Chargement…</p>
@@ -116,14 +137,20 @@
       <p class="muted">Aucun secret.</p>
     {:else}
       <ul>
-        {#each filtered as item, i (i)}
+        {#each filtered as item (item.id)}
           <li>
             <div class="item-main">
               <div class="item-name">{item.name}</div>
-              <div class="item-sub">{revealed.has(i) ? item.password : item.username || "—"}</div>
+              <div class="item-sub">{revealed.has(item.id) ? item.password : item.username || "—"}</div>
             </div>
-            <button class="icon-btn" title="Afficher" onclick={() => toggle(i)}>👁</button>
-            <button class="icon-btn" title="Copier" onclick={() => copy(item.password)}>⧉</button>
+            <button class="icon-btn" title="Afficher" onclick={() => toggle(item.id)}>👁</button>
+            <button
+              class="icon-btn"
+              title="Copier le mot de passe"
+              onclick={() => copy(item.id, item.password)}
+            >
+              {copiedId === item.id ? "✓" : "⧉"}
+            </button>
           </li>
         {/each}
       </ul>
