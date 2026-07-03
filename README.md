@@ -1,12 +1,13 @@
 # GhostPass — Extension navigateur 👻
 
-Extension **Manifest V3** (navigateurs Chromium : Chrome / Edge / Brave) du gestionnaire
-**zero-knowledge** GhostPass. Tout le chiffrement a lieu dans le module **WASM** partagé avec la
-web app ; le serveur ne voit que des blobs chiffrés.
+Extension **Manifest V3** du gestionnaire **zero-knowledge** GhostPass, pour **Chrome/Edge/Brave**,
+**Firefox** et **Safari** (macOS/iOS). Tout le chiffrement a lieu dans le module **WASM** partagé
+avec la web app ; le serveur ne voit que des blobs chiffrés.
 
 > Le cœur crypto étant du WebAssembly, le manifeste déclare une CSP `script-src 'self'
 > 'wasm-unsafe-eval'` (obligatoire en MV3 pour compiler le WASM ; aucun code distant n'est chargé).
-> Firefox (MV3 `background.scripts` + `browser_specific_settings`) est prévu, non encore supporté.
+> Le code est écrit une fois (API `chrome.*`, aliasée sur Firefox/Safari) ; seuls quelques réglages
+> de manifeste diffèrent par navigateur (voir *Navigateurs* ci-dessous).
 
 ## Architecture
 
@@ -51,6 +52,25 @@ npm run check    # svelte-check (typage)
 Charger dans le navigateur : `chrome://extensions` → **Mode développeur** → **Charger l'extension
 non empaquetée** → sélectionner `dist/`.
 
+## Navigateurs
+
+Un seul code source, trois cibles de build (le manifeste diffère à la marge selon le navigateur) :
+
+| Navigateur | Build | Chargement |
+|---|---|---|
+| **Chrome / Edge / Brave** | `npm run build` → `dist/` | `chrome://extensions` → *Charger l'extension non empaquetée* → `dist/` |
+| **Firefox** | `npm run build:firefox` → `dist-firefox/` | `about:debugging` → *Ce Firefox* → *Charger un module temporaire* → `dist-firefox/manifest.json` |
+| **Safari** (macOS/iOS) | `npm run build:safari` → projet Xcode `safari/` | ouvrir `safari/GhostPass.xcodeproj` dans Xcode, builder/signer |
+
+- **Firefox** : `build:firefox` reprend le build Chrome et ajuste le manifeste
+  (`browser_specific_settings.gecko` + background **event page module** au lieu de `service_worker`).
+  Vérifier : `npm run lint:firefox` (web-ext). Validé sur **Firefox ESR 140** (lint 0 erreur,
+  chargement OK).
+- **Safari** : la conversion passe par `xcrun safari-web-extension-converter` (script
+  `build:safari`), qui **exige macOS + Xcode** — impossible sur Linux/CI non-macOS. Le code
+  (WebExtensions MV3, `chrome.*`) est compatible **Safari 16.4+** ; compilation, signature et tests
+  se font dans Xcode sur un Mac.
+
 ## Configuration
 
 Le backend par défaut est `http://localhost:3000` (dev). Pour une instance distante, ouvrir la
@@ -69,7 +89,8 @@ access* → ajouter `ghostpass-extension`), ou être en visibilité *internal*.
 
 MVP : déverrouillage + liste + copie (avec **auto-effacement du presse-papier**), **session dans le
 service worker** avec **verrouillage automatique** (délai réglable), **autofill** de l'onglet actif,
-et **page d'options** (backend + auto-lock). **À venir** : passkeys, support Firefox.
+et **page d'options** (backend + auto-lock). Builds **Chrome / Firefox / Safari** (voir
+*Navigateurs*). **À venir** : passkeys (voir la note WebAuthn / Related Origin Requests).
 
 ### Autofill
 
