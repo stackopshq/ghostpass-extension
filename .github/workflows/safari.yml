@@ -1,0 +1,55 @@
+name: Safari
+
+# Build/validation Safari — nécessite un runner macOS (Xcode). Sur repo privé, les minutes macOS
+# coûtent ~10× : on ne le lance donc que sur push vers main et à la demande, pas sur chaque PR.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: safari-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Convert & build (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@stackopshq"
+          cache: npm
+      - name: Install
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build web extension (dist/)
+        run: npm run build
+      - name: Convert to a Safari Web Extension app
+        run: |
+          xcrun safari-web-extension-converter dist \
+            --project-location safari \
+            --app-name GhostPass \
+            --bundle-identifier hq.stackops.ghostpass \
+            --swift --no-open --force
+      - name: Build the Safari app extension (no signing)
+        run: |
+          set -euo pipefail
+          PROJ=$(find safari -maxdepth 3 -name '*.xcodeproj' | head -1)
+          echo "Xcode project: $PROJ"
+          xcodebuild -list -project "$PROJ"
+          SCHEME=$(xcodebuild -list -project "$PROJ" \
+            | awk '/Schemes:/{f=1;next} f&&NF{sub(/^[ \t]+/,"");print;exit}')
+          echo "Building scheme: $SCHEME"
+          xcodebuild -project "$PROJ" -scheme "$SCHEME" \
+            -configuration Debug -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
