@@ -1,14 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { api, loadApiBase } from "../lib/api.js";
-  import {
-    computeLoginHash,
-    decryptItem,
-    ensureCryptoReady,
-    unlock,
-    type AccountHandle,
-    type DecryptedItem,
-  } from "../lib/crypto.js";
+  import type { DecryptedItem } from "../lib/crypto.js";
+  import type { Message, StateResult, UnlockResult } from "../lib/messages.js";
 
   let ready = $state(false);
   let busy = $state(false);
@@ -19,15 +12,13 @@
   let totpCode = $state("");
   let mfaRequired = $state(false);
 
-  let token = $state<string | null>(null);
-  let account = $state<AccountHandle | null>(null);
+  // La session vit dans le service worker ; le popup n'en est qu'une vue.
+  let unlocked = $state(false);
   let items = $state<DecryptedItem[]>([]);
   let search = $state("");
   let revealed = $state<Set<string>>(new Set());
   let copiedId = $state<string | null>(null);
 
-  // Délai d'auto-effacement du presse-papier (ms). Best-effort : si le popup se ferme avant,
-  // le minuteur est détruit avec son contexte — un content script / offscreen le rendra fiable.
   const CLIPBOARD_CLEAR_MS = 20_000;
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -38,9 +29,20 @@
     }),
   );
 
+  function send<T>(message: Message): Promise<T> {
+    return chrome.runtime.sendMessage(message) as Promise<T>;
+  }
+
   onMount(async () => {
-    await loadApiBase();
-    await ensureCryptoReady();
+    try {
+      const state = await send<StateResult>({ type: "getState" });
+      if (state?.unlocked && state.items) {
+        unlocked = true;
+        items = state.items;
+      }
+    } catch {
+      /* service worker indisponible → écran de connexion */
+    }
     ready = true;
   });
 
@@ -49,22 +51,21 @@
     error = null;
     busy = true;
     try {
-      const { kdfParams } = await api.prelogin(email);
-      const hash = computeLoginHash(email, password, kdfParams);
-      const res = await api.login(email, hash, totpCode || undefined);
-      if (!res.ok) {
-        mfaRequired = res.mfaRequired;
-        throw new Error(res.mfaRequired ? "Code 2FA requis." : res.error);
-      }
-      account = unlock(email, password, {
-        kdfParams: res.kdfParams,
-        encryptedUserKey: res.encryptedUserKey,
-        encryptedPrivateKey: res.encryptedPrivateKey,
+      const res = await send<UnlockResult>({
+        type: "unlock",
+        email,
+        password,
+        totpCode: totpCode || undefined,
       });
-      token = res.token;
+      if (!res?.ok) {
+        mfaRequired = !!res?.mfaRequired;
+        throw new Error(res?.mfaRequired ? "Code 2FA requis." : res?.error || "Échec de connexion.");
+      }
       password = "";
-      const { items: dtos } = await api.listItems(token);
-      items = dtos.map((d) => decryptItem(account!, d.id, d.encryptedKey, d.encryptedData));
+      totpCode = "";
+      mfaRequired = false;
+      unlocked = true;
+      items = res.items ?? [];
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     } finally {
@@ -72,9 +73,13 @@
     }
   }
 
-  function lock() {
-    token = null;
-    account = null;
+  async function lock() {
+    try {
+      await send({ type: "lock" });
+    } catch {
+      /* ignore */
+    }
+    unlocked = false;
     items = [];
     revealed = new Set();
     copiedId = null;
@@ -114,7 +119,7 @@
 
   {#if !ready}
     <p class="muted">Chargement…</p>
-  {:else if !token}
+  {:else if !unlocked}
     <form onsubmit={login}>
       <label>Email<input type="email" bind:value={email} required autocomplete="username" /></label>
       <label>
