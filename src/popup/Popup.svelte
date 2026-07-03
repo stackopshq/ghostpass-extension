@@ -153,7 +153,9 @@
     try {
       const res = await send<FillResult>({ type: "fill", itemId: item.id, tabId: activeTabId });
       if (!res?.ok) flashFill(res?.error ?? "Échec du remplissage.");
-      else flashFill(res.filled ? "Rempli ✓" : "Aucun champ trouvé sur la page.");
+      else if (res.password) flashFill("Rempli ✓");
+      else if (res.username) flashFill("Identifiant rempli ✓");
+      else flashFill("Aucun champ trouvé sur la page.");
     } catch {
       flashFill("Échec du remplissage.");
     }

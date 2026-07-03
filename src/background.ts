@@ -88,22 +88,47 @@ async function doUnlock(email: string, password: string, totpCode?: string): Pro
 }
 
 // Injectée dans la page (contexte isolé) au clic « Remplir ». Autonome : aucune closure.
-function fillCredentialsInPage(cred: { username: string; password: string }): boolean {
-  const pw = document.querySelector<HTMLInputElement>('input[type="password"]:not([disabled])');
-  if (!pw) return false;
+// Cible le formulaire de connexion (champ mot de passe visible + identifiant associé) ; gère les
+// pages sans mot de passe (flux « identifiant d'abord »), ignore les champs cachés/désactivés, et
+// ne se laisse pas piéger par une barre de recherche.
+function fillCredentialsInPage(cred: { username: string; password: string }): {
+  username: boolean;
+  password: boolean;
+} {
+  const visible = (el: HTMLInputElement) =>
+    el.offsetParent !== null && !el.disabled && !el.readOnly && el.type !== "hidden";
   const setValue = (el: HTMLInputElement | null, value: string) => {
-    if (!el || !value) return;
+    if (!el || !value) return false;
     el.focus();
     el.value = value;
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
   };
-  const user = document.querySelector<HTMLInputElement>(
-    'input[autocomplete="username"], input[type="email"], input[name*="user" i], input[name*="email" i], input[id*="user" i]',
-  );
-  setValue(user, cred.username);
-  setValue(pw, cred.password);
-  return true;
+
+  const pw = [...document.querySelectorAll<HTMLInputElement>('input[type="password"]')].find(visible) ?? null;
+
+  // Identifiant : d'abord dans le formulaire du mot de passe, sinon à l'échelle de la page.
+  const scope = pw?.form
+    ? [...pw.form.querySelectorAll<HTMLInputElement>("input")].filter(visible)
+    : [...document.querySelectorAll<HTMLInputElement>("input")].filter(visible);
+  const hint = (i: HTMLInputElement) => `${i.autocomplete} ${i.name} ${i.id}`.toLowerCase();
+  let user =
+    scope.find((i) => (i.autocomplete || "").toLowerCase() === "username") ??
+    scope.find((i) => i.type === "email") ??
+    scope.find((i) => /user|email|login|mail/.test(hint(i))) ??
+    null;
+  // Sinon : dernier champ texte visible précédant le mot de passe.
+  if (!user && pw) {
+    const before = scope.slice(0, scope.indexOf(pw));
+    user = before.reverse().find((i) => ["text", "email", "tel"].includes(i.type)) ?? null;
+  }
+  // Page sans mot de passe (identifiant d'abord) : premier champ texte/email visible.
+  if (!user && !pw) {
+    user = scope.find((i) => ["text", "email", "tel"].includes(i.type)) ?? null;
+  }
+
+  return { username: setValue(user, cred.username), password: setValue(pw, cred.password) };
 }
 
 async function doFill(itemId: string, tabId: number): Promise<FillResult> {
@@ -117,7 +142,8 @@ async function doFill(itemId: string, tabId: number): Promise<FillResult> {
       func: fillCredentialsInPage,
       args: [{ username: item.username, password: item.password }],
     });
-    return { ok: true, filled: injection?.result === true };
+    const r = injection?.result as { username: boolean; password: boolean } | undefined;
+    return { ok: true, username: !!r?.username, password: !!r?.password };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
