@@ -3,6 +3,13 @@ node_modules/
 
 # Build output (extension dépaquetée)
 dist/
+dist-firefox/
+
+# Projet Safari généré (macOS/Xcode)
+safari/
+
+# web-store artifacts
+web-ext-artifacts/
 
 # Divers
 *.local
