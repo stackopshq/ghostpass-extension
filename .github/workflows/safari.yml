@@ -41,16 +41,20 @@ jobs:
             --app-name GhostPass \
             --bundle-identifier hq.stackops.ghostpass \
             --swift --no-open --force
-      - name: Build the Safari app extension (no signing)
+      - name: Build the Safari app extension (macOS, no signing)
         run: |
           set -euo pipefail
           PROJ=$(find safari -maxdepth 3 -name '*.xcodeproj' | head -1)
           echo "Xcode project: $PROJ"
           xcodebuild -list -project "$PROJ"
+          # Le convertisseur génère deux schémas ("… (macOS)" et "… (iOS)") : on compile le macOS.
           SCHEME=$(xcodebuild -list -project "$PROJ" \
+            | awk '/Schemes:/{f=1;next} f&&NF{sub(/^[ \t]+/,"");print}' \
+            | grep -i 'macos' | head -1)
+          [ -n "$SCHEME" ] || SCHEME=$(xcodebuild -list -project "$PROJ" \
             | awk '/Schemes:/{f=1;next} f&&NF{sub(/^[ \t]+/,"");print;exit}')
           echo "Building scheme: $SCHEME"
           xcodebuild -project "$PROJ" -scheme "$SCHEME" \
-            -configuration Debug -destination 'generic/platform=macOS' \
+            -configuration Debug -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build
