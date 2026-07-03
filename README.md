@@ -10,10 +10,15 @@ web app ; le serveur ne voit que des blobs chiffrés.
 
 ## Architecture
 
-- **Popup** (Svelte) : déverrouille le coffre (email + mot de passe maître), liste/copie les secrets.
-- **Service worker** (`src/background.ts`) : point d'extension (autofill, lock auto — à venir).
+- **Popup** (Svelte) : vue de la session — déverrouille (email + mot de passe maître), liste/copie
+  les secrets. Il ne fait plus de crypto lui-même : il délègue au service worker.
+- **Service worker** (`src/background.ts`) : **porteur de la session**. Au déverrouillage il déchiffre
+  le coffre une fois puis **jette le mot de passe maître et les clés** ; il ne garde que les items
+  déchiffrés dans `chrome.storage.session` (mémoire seule, jamais sur disque, contexts de confiance
+  uniquement). **Verrouillage auto** via `chrome.alarms` (délai réglable), à la fermeture du
+  navigateur, ou manuel. La session survit au teardown du SW → plus de re-login à chaque ouverture.
 - **Cœur crypto** : dépend de `@stackopshq/ghostpass-crypto-wasm` publié sur **GitHub Packages**
-  (npm) — plus de dépendance cross-repo `file:`.
+  (npm) — plus de dépendance cross-repo `file:`. Tourne aussi dans le SW (autorisé par la CSP).
 
 ```
 ghostpass-extension/
@@ -62,6 +67,6 @@ access* → ajouter `ghostpass-extension`), ou être en visibilité *internal*.
 
 ## État
 
-MVP : déverrouillage + liste + copie (avec **auto-effacement du presse-papier**) + **page d'options**
-pour le backend. **À venir** : autofill (content script), **verrouillage auto** via session dans le
-service worker (le popup ne conserve rien après fermeture), passkeys, support Firefox.
+MVP : déverrouillage + liste + copie (avec **auto-effacement du presse-papier**), **session dans le
+service worker** avec **verrouillage automatique** (délai réglable dans les options), et **page
+d'options** (backend + auto-lock). **À venir** : autofill (content script), passkeys, support Firefox.

@@ -14,7 +14,7 @@ export default defineManifest({
   content_security_policy: {
     extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
   },
-  permissions: ["storage"],
+  permissions: ["storage", "alarms"],
   // Backend de dev uniquement. Les utilisateurs pointent l'extension vers leur propre instance
   // depuis la page d'options, qui demande l'origine correspondante au runtime.
   host_permissions: ["http://localhost:3000/*"],
