@@ -68,5 +68,13 @@ access* → ajouter `ghostpass-extension`), ou être en visibilité *internal*.
 ## État
 
 MVP : déverrouillage + liste + copie (avec **auto-effacement du presse-papier**), **session dans le
-service worker** avec **verrouillage automatique** (délai réglable dans les options), et **page
-d'options** (backend + auto-lock). **À venir** : autofill (content script), passkeys, support Firefox.
+service worker** avec **verrouillage automatique** (délai réglable), **autofill** de l'onglet actif,
+et **page d'options** (backend + auto-lock). **À venir** : passkeys, support Firefox.
+
+### Autofill
+
+Le popup détecte le domaine de l'onglet actif et **remonte les identifiants correspondants**. Un
+clic sur **Remplir** (⌨) envoie au service worker qui **injecte à la demande** (via `activeTab` +
+`scripting`, sur ce seul geste) une fonction remplissant les champs `username`/`password` de la page.
+Pas de content script permanent, pas de remplissage automatique au chargement, pas d'accès large aux
+pages — l'injection est limitée à l'onglet actif et déclenchée par l'utilisateur.

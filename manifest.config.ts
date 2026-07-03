@@ -14,7 +14,9 @@ export default defineManifest({
   content_security_policy: {
     extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
   },
-  permissions: ["storage", "alarms"],
+  // activeTab + scripting : injection du remplissage dans l'onglet actif, uniquement au clic
+  // « Remplir » (geste utilisateur) — pas de content script permanent ni d'accès large aux pages.
+  permissions: ["storage", "alarms", "activeTab", "scripting"],
   // Backend de dev uniquement. Les utilisateurs pointent l'extension vers leur propre instance
   // depuis la page d'options, qui demande l'origine correspondante au runtime.
   host_permissions: ["http://localhost:3000/*"],
