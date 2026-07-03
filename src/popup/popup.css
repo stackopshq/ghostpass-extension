@@ -138,6 +138,26 @@ li {
   font-size: 0.75rem;
 }
 
+.fill-btn {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+li.match {
+  border-left: 2px solid var(--accent);
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+.badge {
+  color: var(--accent);
+  margin-left: 0.35rem;
+}
+
+.fill-msg {
+  margin-top: 0.6rem;
+}
+
 .error {
   color: #ef6b72;
   font-size: 0.82rem;

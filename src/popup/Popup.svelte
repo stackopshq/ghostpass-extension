@@ -1,7 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { DecryptedItem } from "../lib/crypto.js";
-  import type { Message, StateResult, UnlockResult } from "../lib/messages.js";
+  import {
+    hostFromUrl,
+    hostsMatch,
+    type FillResult,
+    type Message,
+    type StateResult,
+    type UnlockResult,
+  } from "../lib/messages.js";
 
   let ready = $state(false);
   let busy = $state(false);
@@ -19,18 +26,42 @@
   let revealed = $state<Set<string>>(new Set());
   let copiedId = $state<string | null>(null);
 
+  // Onglet actif (pour l'autofill).
+  let activeTabId = $state<number | null>(null);
+  let activeHost = $state<string | null>(null);
+  let fillMsg = $state<string | null>(null);
+  let fillTimer: ReturnType<typeof setTimeout> | undefined;
+
   const CLIPBOARD_CLEAR_MS = 20_000;
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
+  function matches(item: DecryptedItem): boolean {
+    return hostsMatch(hostFromUrl(item.url), activeHost);
+  }
+
+  // Filtre par recherche, puis remonte les identifiants du domaine de l'onglet actif.
   const filtered = $derived(
-    items.filter((i) => {
-      const q = search.trim().toLowerCase();
-      return !q || i.name.toLowerCase().includes(q) || i.username.toLowerCase().includes(q);
-    }),
+    items
+      .filter((i) => {
+        const q = search.trim().toLowerCase();
+        return !q || i.name.toLowerCase().includes(q) || i.username.toLowerCase().includes(q);
+      })
+      .sort((a, b) => Number(matches(b)) - Number(matches(a))),
   );
 
   function send<T>(message: Message): Promise<T> {
     return chrome.runtime.sendMessage(message) as Promise<T>;
+  }
+
+  async function loadActiveTab() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      activeTabId = tab?.id ?? null;
+      activeHost = tab?.url ? hostFromUrl(tab.url) : null;
+    } catch {
+      activeTabId = null;
+      activeHost = null;
+    }
   }
 
   onMount(async () => {
@@ -39,6 +70,7 @@
       if (state?.unlocked && state.items) {
         unlocked = true;
         items = state.items;
+        await loadActiveTab();
       }
     } catch {
       /* service worker indisponible → écran de connexion */
@@ -66,6 +98,7 @@
       mfaRequired = false;
       unlocked = true;
       items = res.items ?? [];
+      await loadActiveTab();
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     } finally {
@@ -106,6 +139,26 @@
     }
   }
 
+  function flashFill(text: string) {
+    fillMsg = text;
+    if (fillTimer) clearTimeout(fillTimer);
+    fillTimer = setTimeout(() => (fillMsg = null), 2500);
+  }
+
+  async function fill(item: DecryptedItem) {
+    if (activeTabId == null) {
+      flashFill("Onglet indisponible.");
+      return;
+    }
+    try {
+      const res = await send<FillResult>({ type: "fill", itemId: item.id, tabId: activeTabId });
+      if (!res?.ok) flashFill(res?.error ?? "Échec du remplissage.");
+      else flashFill(res.filled ? "Rempli ✓" : "Aucun champ trouvé sur la page.");
+    } catch {
+      flashFill("Échec du remplissage.");
+    }
+  }
+
   function openOptions() {
     chrome.runtime.openOptionsPage?.();
   }
@@ -143,11 +196,14 @@
     {:else}
       <ul>
         {#each filtered as item (item.id)}
-          <li>
+          <li class:match={matches(item)}>
             <div class="item-main">
-              <div class="item-name">{item.name}</div>
+              <div class="item-name">
+                {item.name}{#if matches(item)}<span class="badge" title="Correspond à l'onglet actif">•</span>{/if}
+              </div>
               <div class="item-sub">{revealed.has(item.id) ? item.password : item.username || "—"}</div>
             </div>
+            <button class="icon-btn fill-btn" title="Remplir dans l'onglet actif" aria-label="Remplir" onclick={() => fill(item)}>⌨</button>
             <button class="icon-btn" title="Afficher" onclick={() => toggle(item.id)}>👁</button>
             <button
               class="icon-btn"
@@ -162,5 +218,6 @@
     {/if}
   {/if}
 
+  {#if fillMsg}<p class="muted fill-msg">{fillMsg}</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}
 </div>

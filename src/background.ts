@@ -8,7 +8,13 @@
 // rien persister sur disque ni retenir la moindre clé.
 import { api, loadApiBase } from "./lib/api.js";
 import { computeLoginHash, decryptItem, ensureCryptoReady, unlock, type DecryptedItem } from "./lib/crypto.js";
-import { getAutoLockMinutes, type Message, type StateResult, type UnlockResult } from "./lib/messages.js";
+import {
+  getAutoLockMinutes,
+  type FillResult,
+  type Message,
+  type StateResult,
+  type UnlockResult,
+} from "./lib/messages.js";
 
 const ALARM = "ghostpass-autolock";
 const SESSION_KEY = "session";
@@ -81,6 +87,42 @@ async function doUnlock(email: string, password: string, totpCode?: string): Pro
   return { ok: true, items };
 }
 
+// Injectée dans la page (contexte isolé) au clic « Remplir ». Autonome : aucune closure.
+function fillCredentialsInPage(cred: { username: string; password: string }): boolean {
+  const pw = document.querySelector<HTMLInputElement>('input[type="password"]:not([disabled])');
+  if (!pw) return false;
+  const setValue = (el: HTMLInputElement | null, value: string) => {
+    if (!el || !value) return;
+    el.focus();
+    el.value = value;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const user = document.querySelector<HTMLInputElement>(
+    'input[autocomplete="username"], input[type="email"], input[name*="user" i], input[name*="email" i], input[id*="user" i]',
+  );
+  setValue(user, cred.username);
+  setValue(pw, cred.password);
+  return true;
+}
+
+async function doFill(itemId: string, tabId: number): Promise<FillResult> {
+  const s = await readSession();
+  if (!s || s.expiresAt <= Date.now()) return { ok: false, error: "Coffre verrouillé." };
+  const item = s.items.find((i) => i.id === itemId);
+  if (!item) return { ok: false, error: "Élément introuvable." };
+  try {
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: fillCredentialsInPage,
+      args: [{ username: item.username, password: item.password }],
+    });
+    return { ok: true, filled: injection?.result === true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 async function currentState(): Promise<StateResult> {
   const s = await readSession();
   if (s && s.expiresAt > Date.now()) return { unlocked: true, items: s.items };
@@ -101,6 +143,9 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
         case "lock":
           await lock();
           sendResponse({ ok: true });
+          break;
+        case "fill":
+          sendResponse(await doFill(message.itemId, message.tabId));
           break;
         default:
           sendResponse({ ok: false, error: "unknown message" });
