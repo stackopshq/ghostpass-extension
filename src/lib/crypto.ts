@@ -17,6 +17,7 @@ export interface LoginBlobs {
 }
 
 export interface DecryptedItem {
+  id: string;
   name: string;
   username: string;
   password: string;
@@ -44,6 +45,7 @@ export function unlock(email: string, password: string, blobs: LoginBlobs): Acco
 /// Déchiffre un item (login) du coffre avec l'USK.
 export function decryptItem(
   account: Account,
+  id: string,
   encryptedKey: string,
   encryptedData: string,
 ): DecryptedItem {
@@ -54,6 +56,7 @@ export function decryptItem(
   );
   const d = item.data?.data ?? {};
   return {
+    id,
     name: item.name,
     username: d.username ?? "",
     password: d.password ?? "",

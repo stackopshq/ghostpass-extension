@@ -1,8 +1,12 @@
 # GhostPass — Extension navigateur 👻
 
-Extension **Manifest V3** (Chrome/Edge/Firefox) du gestionnaire **zero-knowledge** GhostPass.
-Tout le chiffrement a lieu dans le module **WASM** partagé avec la web app ; le serveur ne voit
-que des blobs chiffrés.
+Extension **Manifest V3** (navigateurs Chromium : Chrome / Edge / Brave) du gestionnaire
+**zero-knowledge** GhostPass. Tout le chiffrement a lieu dans le module **WASM** partagé avec la
+web app ; le serveur ne voit que des blobs chiffrés.
+
+> Le cœur crypto étant du WebAssembly, le manifeste déclare une CSP `script-src 'self'
+> 'wasm-unsafe-eval'` (obligatoire en MV3 pour compiler le WASM ; aucun code distant n'est chargé).
+> Firefox (MV3 `background.scripts` + `browser_specific_settings`) est prévu, non encore supporté.
 
 ## Architecture
 
@@ -44,8 +48,11 @@ non empaquetée** → sélectionner `dist/`.
 
 ## Configuration
 
-Backend ciblé via `host_permissions` (manifest) et `apiBase` (par défaut le backend de dev,
-modifiable via `chrome.storage`). À adapter au domaine de production.
+Le backend par défaut est `http://localhost:3000` (dev). Pour une instance distante, ouvrir la
+**page d'options** (icône ⚙ du popup, ou `chrome://extensions` → Détails → Options) et saisir son
+URL `https://` : le navigateur demande alors l'autorisation d'accéder à ce domaine
+(`optional_host_permissions`), et l'URL est mémorisée dans `chrome.storage`. Aucune IP n'est codée
+en dur dans le manifeste.
 
 ## CI
 
@@ -55,5 +62,6 @@ access* → ajouter `ghostpass-extension`), ou être en visibilité *internal*.
 
 ## État
 
-MVP : déverrouillage + liste + copie. **À venir** : autofill (content script), lock auto,
-passkeys, configuration du backend dans les options.
+MVP : déverrouillage + liste + copie (avec **auto-effacement du presse-papier**) + **page d'options**
+pour le backend. **À venir** : autofill (content script), **verrouillage auto** via session dans le
+service worker (le popup ne conserve rien après fermeture), passkeys, support Firefox.
