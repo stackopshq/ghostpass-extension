@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { browser } from "../lib/browser.js";
   import type { DecryptedItem } from "../lib/crypto.js";
   import {
     hostFromUrl,
@@ -50,12 +51,12 @@
   );
 
   function send<T>(message: Message): Promise<T> {
-    return chrome.runtime.sendMessage(message) as Promise<T>;
+    return browser.runtime.sendMessage(message) as Promise<T>;
   }
 
   async function loadActiveTab() {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       activeTabId = tab?.id ?? null;
       activeHost = tab?.url ? hostFromUrl(tab.url) : null;
     } catch {
@@ -162,7 +163,7 @@
   }
 
   function openOptions() {
-    chrome.runtime.openOptionsPage?.();
+    browser.runtime.openOptionsPage?.();
   }
 </script>
 

@@ -1,4 +1,5 @@
 // Protocole de messages popup ↔ service worker (la session vit dans le SW).
+import { browser } from "./browser.js";
 import type { DecryptedItem } from "./crypto.js";
 
 export type Message =
@@ -47,7 +48,7 @@ export const DEFAULT_AUTO_LOCK_MINUTES = 15;
 
 export async function getAutoLockMinutes(): Promise<number> {
   try {
-    const { autoLockMinutes } = await chrome.storage.local.get("autoLockMinutes");
+    const { autoLockMinutes } = await browser.storage.local.get("autoLockMinutes");
     const n = Number(autoLockMinutes);
     return Number.isFinite(n) && n > 0 ? n : DEFAULT_AUTO_LOCK_MINUTES;
   } catch {
