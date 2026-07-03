@@ -34,8 +34,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Type-check
         run: npm run check
-      - name: Build
+      - name: Build (Chrome)
         run: npm run build
+      - name: Build + lint (Firefox)
+        # build:firefox réécrit le manifeste pour Firefox ; web-ext lint échoue sur les erreurs
+        # (pas les warnings) — garde le paquet Firefox valide à chaque changement.
+        run: |
+          npm run build:firefox
+          npx --yes web-ext@8 lint --source-dir=dist-firefox
 
   secrets:
     name: Secrets (gitleaks)
