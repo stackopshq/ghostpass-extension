@@ -2,6 +2,7 @@
   "name": "@ghostpass/extension",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Extension navigateur GhostPass (Manifest V3) — coffre zero-knowledge, autofill",
   "scripts": {
