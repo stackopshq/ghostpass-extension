@@ -9,7 +9,8 @@ export type Message =
 
 export interface FillResult {
   ok: boolean;
-  filled?: boolean;
+  username?: boolean;
+  password?: boolean;
   error?: string;
 }
 
