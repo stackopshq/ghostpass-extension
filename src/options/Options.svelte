@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { browser } from "../lib/browser.js";
   import { getApiBase, loadApiBase, setApiBase } from "../lib/api.js";
   import { DEFAULT_AUTO_LOCK_MINUTES, getAutoLockMinutes } from "../lib/messages.js";
 
@@ -37,11 +38,11 @@
       }
       // Instance distante : demander la permission d'hôte au runtime (optional_host_permissions).
       if (parsed.protocol === "https:") {
-        const granted = await chrome.permissions.request({ origins: [`${parsed.origin}/*`] });
+        const granted = await browser.permissions.request({ origins: [`${parsed.origin}/*`] });
         if (!granted) throw new Error("Permission d'accès au domaine refusée.");
       }
       await setApiBase(trimmed);
-      await chrome.storage.local.set({ autoLockMinutes: minutes });
+      await browser.storage.local.set({ autoLockMinutes: minutes });
       url = trimmed;
       lockMinutes = minutes;
       saved = true;

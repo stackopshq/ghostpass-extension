@@ -1,13 +1,15 @@
 // Client HTTP vers le backend GhostPass. Contrairement à la web app (proxy Vite `/api`),
 // l'extension doit cibler l'URL complète du backend (voir host_permissions du manifest).
-// L'URL est configurable depuis la page d'options (chrome.storage) ; défaut = backend de dev local.
+// L'URL est configurable depuis la page d'options (browser.storage) ; défaut = backend de dev local.
+import { browser } from "./browser.js";
+
 const DEFAULT_API_BASE = "http://localhost:3000";
 
 let apiBase = DEFAULT_API_BASE;
 
 export async function loadApiBase(): Promise<void> {
   try {
-    const { apiBase: stored } = await chrome.storage.local.get("apiBase");
+    const { apiBase: stored } = await browser.storage.local.get("apiBase");
     if (typeof stored === "string" && stored) apiBase = stored;
   } catch {
     /* hors contexte extension (ex. tests) → défaut */
@@ -17,7 +19,7 @@ export async function loadApiBase(): Promise<void> {
 export async function setApiBase(url: string): Promise<void> {
   apiBase = url.replace(/\/$/, "");
   try {
-    await chrome.storage.local.set({ apiBase });
+    await browser.storage.local.set({ apiBase });
   } catch {
     /* ignore */
   }
