@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo/ghostpass.png" alt="GhostPass" width="90">
+</p>
+
 # GhostPass — Extension navigateur 👻
 
 Extension **Manifest V3** du gestionnaire **zero-knowledge** GhostPass, pour **Chrome/Edge/Brave**,
