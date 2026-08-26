@@ -22,16 +22,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@stackopshq"
+          registry-url: "https://git.stackops.ch/api/packages/stackops/npm/"
+          scope: "@stackops"
           cache: npm
-      # Le cœur WASM est tiré de GitHub Packages (@stackopshq/ghostpass-crypto-wasm).
-      # GITHUB_TOKEN suffit si le package autorise l'accès à ce repo (Package settings →
-      # Manage Actions access → ajouter ghostpass-extension).
+      # Le cœur WASM est tiré du registre npm de l'instance (@stackops/ghostpass-crypto-wasm),
+      # publié par le workflow `publish-wasm.yml` du dépôt ghostpass. Le jeton auto-injecté par
+      # Gitea Actions ne porte pas de scope `package` : on passe par le PAT REGISTRY_TOKEN,
+      # partagé au niveau de l'organisation.
       - name: Install
-        run: npm ci
+        run: |
+          if [[ -z "${NODE_AUTH_TOKEN}" ]]; then
+            echo "::error::Secret REGISTRY_TOKEN manquant (PAT avec le scope read:package)"
+            exit 1
+          fi
+          npm ci
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
       - name: Type-check
         run: npm run check
       - name: Build (Chrome)

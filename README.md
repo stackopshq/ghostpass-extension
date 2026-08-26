@@ -22,8 +22,9 @@ avec la web app ; le serveur ne voit que des blobs chiffrés.
   déchiffrés dans `chrome.storage.session` (mémoire seule, jamais sur disque, contexts de confiance
   uniquement). **Verrouillage auto** via `chrome.alarms` (délai réglable), à la fermeture du
   navigateur, ou manuel. La session survit au teardown du SW → plus de re-login à chaque ouverture.
-- **Cœur crypto** : dépend de `@stackopshq/ghostpass-crypto-wasm` publié sur **GitHub Packages**
-  (npm) — plus de dépendance cross-repo `file:`. Tourne aussi dans le SW (autorisé par la CSP).
+- **Cœur crypto** : dépend de `@stackops/ghostpass-crypto-wasm` publié sur le **registre npm de
+  l'instance Gitea** - plus de dépendance cross-repo `file:`. Tourne aussi dans le SW (autorisé
+  par la CSP).
 
 ```
 ghostpass-extension/
@@ -85,9 +86,10 @@ en dur dans le manifeste.
 
 ## CI
 
-`/.github/workflows/ci.yml` installe le WASM depuis GitHub Packages via `GITHUB_TOKEN`. Le package
-`@stackopshq/ghostpass-crypto-wasm` doit autoriser ce repo (Package settings → *Manage Actions
-access* → ajouter `ghostpass-extension`), ou être en visibilité *internal*.
+`/.github/workflows/ci.yml` installe le WASM depuis le registre npm de l'instance Gitea. Le jeton
+auto-injecté par Gitea Actions ne porte pas de scope `package` : la CI utilise le PAT
+`REGISTRY_TOKEN`, partagé au niveau de l'organisation `stackops`. Le paquet est publié par le
+workflow `publish-wasm.yml` du dépôt `ghostpass`.
 
 ## État
 
