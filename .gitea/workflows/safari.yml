@@ -1,10 +1,13 @@
 name: Safari
 
-# Build/validation Safari — nécessite un runner macOS (Xcode). Sur repo privé, les minutes macOS
-# coûtent ~10× : on ne le lance donc que sur push vers main et à la demande, pas sur chaque PR.
+# Build/validation Safari : nécessite un runner macOS (Xcode).
+#
+# L'instance Gitea n'en héberge aucun aujourd'hui (le seul runner porte les labels
+# `ubuntu-latest`, `ubuntu-22.04`, `ubuntu-20.04` et `host`). Un déclenchement automatique
+# laisserait donc un run en `queued` indéfiniment à chaque push sur main, ce qui est
+# précisément arrivé au run 1795. Le workflow reste donc **manuel uniquement**, jusqu'à ce
+# qu'un runner macOS soit enregistré.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

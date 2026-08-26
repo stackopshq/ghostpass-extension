@@ -86,10 +86,13 @@ en dur dans le manifeste.
 
 ## CI
 
-`/.github/workflows/ci.yml` installe le WASM depuis le registre npm de l'instance Gitea. Le jeton
+`/.gitea/workflows/ci.yml` installe le WASM depuis le registre npm de l'instance Gitea. Le jeton
 auto-injecté par Gitea Actions ne porte pas de scope `package` : la CI utilise le PAT
 `REGISTRY_TOKEN`, partagé au niveau de l'organisation `stackops`. Le paquet est publié par le
 workflow `publish-wasm.yml` du dépôt `ghostpass`.
+
+`/.gitea/workflows/safari.yml` est **manuel uniquement** : il exige un runner macOS, que
+l'instance n'héberge pas encore.
 
 ## État
 
