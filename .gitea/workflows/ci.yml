@@ -84,7 +84,11 @@ jobs:
       - name: Version
         id: version
         run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v4
+      # **v3, et pas v4.** `upload-artifact@v4` embarque `@actions/artifact` v2, qui refuse de
+      # démarrer dès que l'instance n'est pas github.com : « v4 is not currently supported on
+      # GHES ». Mesuré ici, run 2767. La v3 parle le protocole d'artefacts que Gitea implémente.
+      # Ne pas la « moderniser » sans avoir vérifié que la v4 passe sur cette forge.
+      - uses: actions/upload-artifact@v3
         with:
           name: ghostpass-chrome-${{ steps.version.outputs.value }}
           path: |
