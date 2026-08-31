@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:firefox": "vite build && node scripts/build-firefox.mjs",
+    "build:dev": "vite build --mode development",
     "build:safari": "bash scripts/build-safari.sh",
     "lint:firefox": "npx --yes web-ext lint --source-dir=dist-firefox",
     "check": "svelte-check --tsconfig ./tsconfig.json"
