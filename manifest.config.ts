@@ -4,6 +4,17 @@ import { defineManifest } from "@crxjs/vite-plugin";
 // et c'est celui du manifeste que le Chrome Web Store refuse en silence quand il n'a pas bougé.
 import pkg from "./package.json" with { type: "json" };
 
+// Icônes déclarées pour le Store (128 obligatoire, 48 utilisé par la page des extensions,
+// 16/32 par la barre d'outils). Elles sont produites par `npm run icons` à partir de
+// `assets/logo/ghostpass-icon.svg` — la variante *icône* de la charte, pas le logo réduit :
+// le trait du logo fait 4 % de la hauteur et disparaît à 16 px.
+const ICONS = {
+  16: "assets/logo/icon-16.png",
+  32: "assets/logo/icon-32.png",
+  48: "assets/logo/icon-48.png",
+  128: "assets/logo/icon-128.png",
+};
+
 // Manifest V3. Le popup, la page d'options et le service worker sont buildés par Vite (@crxjs).
 // La fonction reçoit l'environnement Vite : ce qui n'a de sens qu'en développement n'entre pas
 // dans le paquet publié.
@@ -15,7 +26,8 @@ export default defineManifest((env) => {
     name: "GhostPass",
     version: pkg.version,
     description: "Coffre-fort de mots de passe zero-knowledge — le serveur ne voit jamais vos secrets.",
-    action: { default_popup: "src/popup/index.html", default_title: "GhostPass" },
+    icons: ICONS,
+    action: { default_popup: "src/popup/index.html", default_title: "GhostPass", default_icon: ICONS },
     options_ui: { page: "src/options/index.html", open_in_tab: true },
     background: { service_worker: "src/background.ts", type: "module" },
     // Le cœur crypto est du WebAssembly : la CSP MV3 par défaut interdit sa compilation

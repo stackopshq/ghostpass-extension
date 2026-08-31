@@ -11,6 +11,7 @@
     "build:firefox": "vite build && node scripts/build-firefox.mjs",
     "build:dev": "vite build --mode development",
     "build:safari": "bash scripts/build-safari.sh",
+    "icons": "node scripts/generate-icons.mjs",
     "lint:firefox": "npx --yes web-ext lint --source-dir=dist-firefox",
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.0",
+    "@resvg/resvg-js": "2.6.2",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tsconfig/svelte": "^5.0.0",
     "@types/chrome": "*",
