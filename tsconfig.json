@@ -6,6 +6,8 @@
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    // manifest.config.ts dérive sa version de package.json : un seul nombre à faire monter.
+    "resolveJsonModule": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "types": ["svelte", "chrome", "vite/client"]

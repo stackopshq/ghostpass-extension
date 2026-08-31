@@ -1,10 +1,14 @@
 import { defineManifest } from "@crxjs/vite-plugin";
+// La version du manifeste est **dérivée** de package.json, jamais recopiée : deux nombres
+// qui doivent monter ensemble sans que rien ne l'impose finissent toujours par diverger,
+// et c'est celui du manifeste que le Chrome Web Store refuse en silence quand il n'a pas bougé.
+import pkg from "./package.json" with { type: "json" };
 
 // Manifest V3. Le popup, la page d'options et le service worker sont buildés par Vite (@crxjs).
 export default defineManifest({
   manifest_version: 3,
   name: "GhostPass",
-  version: "0.0.0",
+  version: pkg.version,
   description: "Coffre-fort de mots de passe zero-knowledge — le serveur ne voit jamais vos secrets.",
   action: { default_popup: "src/popup/index.html", default_title: "GhostPass" },
   options_ui: { page: "src/options/index.html", open_in_tab: true },
