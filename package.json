@@ -11,7 +11,8 @@
     "build:firefox": "vite build && node scripts/build-firefox.mjs",
     "build:safari": "bash scripts/build-safari.sh",
     "lint:firefox": "npx --yes web-ext lint --source-dir=dist-firefox",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "node --test test/*.test.ts"
   },
   "dependencies": {
     "@stackops/ghostpass-crypto-wasm": "^0.0.1"

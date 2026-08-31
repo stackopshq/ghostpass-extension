@@ -40,6 +40,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
       - name: Type-check
         run: npm run check
+      # `node --test` lit le TypeScript nativement depuis Node 22 : le test verrouille les noms
+      # réservés de l'application web sans ajouter la moindre dépendance.
+      - name: Test
+        run: npm test
       - name: Build (Chrome)
         run: npm run build
       - name: Build + lint (Firefox)

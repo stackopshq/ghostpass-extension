@@ -8,7 +8,13 @@
 // rien persister sur disque ni retenir la moindre clé.
 import { browser } from "./lib/browser.js";
 import { api, loadApiBase } from "./lib/api.js";
-import { computeLoginHash, decryptItem, ensureCryptoReady, unlock, type DecryptedItem } from "./lib/crypto.js";
+import {
+  computeLoginHash,
+  decryptVaultItem,
+  ensureCryptoReady,
+  unlock,
+  type DecryptedItem,
+} from "./lib/crypto.js";
 import {
   getAutoLockMinutes,
   type FillResult,
@@ -79,7 +85,14 @@ async function doUnlock(email: string, password: string, totpCode?: string): Pro
     encryptedPrivateKey: res.encryptedPrivateKey,
   });
   const { items: dtos } = await api.listItems(res.token);
-  const items = dtos.map((d) => decryptItem(account, d.id, d.encryptedKey, d.encryptedData));
+  // Les registres de l'application web (dossiers vides, partages en cours) sont stockés comme
+  // des items ordinaires : on les ouvre pour savoir ce qu'ils sont, puis on les écarte. Les
+  // montrer donnait deux entrées fantômes sans identifiant ni mot de passe.
+  const items: DecryptedItem[] = [];
+  for (const d of dtos) {
+    const opened = decryptVaultItem(account, d.id, d.encryptedKey, d.encryptedData);
+    if (opened.kind === "item") items.push(opened.item);
+  }
   // À partir d'ici, ni `password`, ni `account` (clés), ni `res.token` ne sont conservés.
 
   session = { items, expiresAt: 0 };
