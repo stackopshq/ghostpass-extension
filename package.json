@@ -1,6 +1,6 @@
 {
   "name": "@ghostpass/extension",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -9,7 +9,10 @@
     "dev": "vite",
     "build": "vite build",
     "build:firefox": "vite build && node scripts/build-firefox.mjs",
+    "build:dev": "vite build --mode development",
     "build:safari": "bash scripts/build-safari.sh",
+    "icons": "node scripts/generate-icons.mjs",
+    "package": "npm run build && node scripts/package-chrome.mjs",
     "lint:firefox": "npx --yes web-ext lint --source-dir=dist-firefox",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "node --test test/*.test.ts"
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.0",
+    "@resvg/resvg-js": "2.6.2",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tsconfig/svelte": "^5.0.0",
     "@types/chrome": "*",

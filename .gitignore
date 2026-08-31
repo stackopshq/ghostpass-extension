@@ -14,3 +14,6 @@ web-ext-artifacts/
 # Divers
 *.local
 .DS_Store
+
+# Paquet Chrome Web Store produit par `npm run package`
+artifacts/

@@ -53,6 +53,54 @@ jobs:
           npm run build:firefox
           npx --yes web-ext@8 lint --source-dir=dist-firefox
 
+  package:
+    # Publier reviendrait sinon à lancer `npm run build` sur un poste — c'est-à-dire à livrer
+    # une chose qu'on ne sait pas refaire. Ce job produit le ZIP téléversable sur le Chrome Web
+    # Store à partir du seul commit, et l'attache au run : on peut toujours répondre à
+    # « d'où vient le paquet publié ? ».
+    #
+    # Il ne dépend d'aucun autre job : un échec ici est attribuable sans avoir à démêler
+    # quel job amont a bloqué la chaîne.
+    name: Package (Chrome Web Store)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://git.stackops.ch/api/packages/stackops/npm/"
+          scope: "@stackops"
+          cache: npm
+      - name: Install
+        run: |
+          if [[ -z "${NODE_AUTH_TOKEN}" ]]; then
+            echo "::error::Secret REGISTRY_TOKEN manquant (PAT avec le scope read:package)"
+            exit 1
+          fi
+          npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+      # `npm run package` construit puis vérifie : version réelle (0.0.0 refusé), manifeste aligné
+      # sur package.json, aucune `host_permissions` de dev, icônes 16/48/128 déclarées. L'archive
+      # est déterministe (entrées triées, horodatage fixe) : même commit, mêmes octets.
+      - name: Build + package
+        run: npm run package
+      - name: Version
+        id: version
+        run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      # **v3, et pas v4.** `upload-artifact@v4` embarque `@actions/artifact` v2, qui refuse de
+      # démarrer dès que l'instance n'est pas github.com : « v4 is not currently supported on
+      # GHES ». Mesuré ici, run 2767. La v3 parle le protocole d'artefacts que Gitea implémente.
+      # Ne pas la « moderniser » sans avoir vérifié que la v4 passe sur cette forge.
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ghostpass-chrome-${{ steps.version.outputs.value }}
+          path: |
+            artifacts/ghostpass-chrome-*.zip
+            artifacts/ghostpass-chrome-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
   secrets:
     name: Secrets (gitleaks)
     runs-on: ubuntu-latest
