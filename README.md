@@ -36,14 +36,15 @@ ghostpass-extension/
 
 ## Prérequis
 
-Le cœur crypto est tiré de **GitHub Packages**. Authentifie npm (token avec `read:packages`) :
+Le cœur crypto est tiré du **registre npm de l'instance Gitea** (`@stackops/ghostpass-crypto-wasm`).
+Authentifie npm avec un PAT portant le scope `read:package` :
 
 ```bash
-export NODE_AUTH_TOKEN="$(gh auth token)"   # ou un PAT fine-grained read:packages
+export NODE_AUTH_TOKEN="<PAT Gitea, scope read:package>"
 ```
 
-Publier une nouvelle version du WASM : lancer le workflow **Publish WASM** du repo `ghostpass`
-(`gh workflow run publish-wasm.yml -f version=X.Y.Z`), puis bumper la version dans `package.json`.
+Publier une nouvelle version du WASM : lancer le workflow **Publish WASM** du dépôt `ghostpass`,
+puis bumper la version dans `package.json`.
 
 ## Développer
 
@@ -51,8 +52,19 @@ Publier une nouvelle version du WASM : lancer le workflow **Publish WASM** du re
 npm install
 npm run dev      # build watch ; charger dist/ en extension non empaquetée
 npm run build    # build de production → dist/
+npm run build:dev  # build one-shot en mode développement (backend local autorisé)
 npm run check    # svelte-check (typage)
+npm run icons    # régénère assets/logo/icon-*.png depuis le SVG
+npm run package  # build + ZIP Chrome Web Store → artifacts/
 ```
+
+**Le backend de dev n'existe qu'en mode développement.** `npm run dev` et `npm run build:dev`
+déclarent `host_permissions: ["http://localhost:3000/*"]` et pointent par défaut sur
+`http://localhost:3000` ; `npm run build` ne fait ni l'un ni l'autre. Un paquet publié qui
+demanderait cette permission la ferait accorder par chaque utilisateur sans jamais lui servir, et
+un relecteur du Store la verrait. Le discriminant est le **mode Vite**, lu au même endroit par
+`manifest.config.ts` et par `src/lib/api.ts` — pas `import.meta.env.DEV`, qui reste faux sous
+`vite build --mode development` et ferait diverger les deux en silence.
 
 Charger dans le navigateur : `chrome://extensions` → **Mode développeur** → **Charger l'extension
 non empaquetée** → sélectionner `dist/`.
@@ -84,6 +96,32 @@ URL `https://` : le navigateur demande alors l'autorisation d'accéder à ce dom
 (`optional_host_permissions`), et l'URL est mémorisée dans `chrome.storage`. Aucune IP n'est codée
 en dur dans le manifeste.
 
+## Version, icônes et paquet
+
+**Une seule version.** `package.json` la porte ; `manifest.config.ts` la lit. Deux nombres qui
+doivent monter ensemble sans que rien ne l'impose finissent toujours par diverger, et c'est celui
+du manifeste que le Store refuse quand il n'a pas bougé. Pour publier : bumper `package.json`,
+rien d'autre.
+
+**Les icônes ne sont pas le logo réduit.** Le logo (`assets/logo/ghostpass.svg`) est un tracé de
+22 unités sur 548 : à 16 px, la taille à laquelle une icône de barre d'outils est réellement
+regardée, le trait fait six dixièmes de pixel et disparaît. Les icônes viennent donc de
+`assets/logo/ghostpass-icon.svg` — même silhouette, **remplie**, glyphe creusé, tirets détachés
+abandonnés. Les deux SVG sont produits par `tools/brand/ghost_suite.py` (dépôt `apollo-platform`)
+et vendorés ici pour que ce dépôt sache refaire ses propres icônes. `npm run icons` régénère les
+PNG ; ne jamais retoucher un PNG à la main.
+
+**Le paquet est produit par la CI, pas par un poste.** Le job `package` construit et vérifie
+(version réelle, manifeste aligné sur `package.json`, aucune `host_permissions` de dev, icônes
+16/48/128 déclarées) puis produit `artifacts/ghostpass-chrome-<version>.zip` avec son `sha256`,
+attaché au run. L'archive est **déterministe** — entrées triées, horodatage fixe — donc le même
+commit donne les mêmes octets, et on peut toujours répondre à « le paquet en ligne, c'est quel
+commit ? ». `npm run package` refait exactement la même archive en local.
+
+Les éléments de la fiche du Store (usage unique, justification de chaque permission, déclaration
+d'usage des données) sont écrits dans [`docs/chrome-web-store.md`](docs/chrome-web-store.md) et
+non dans le navigateur au moment de la soumission.
+
 ## CI
 
 `/.gitea/workflows/ci.yml` installe le WASM depuis le registre npm de l'instance Gitea. Le jeton
@@ -95,6 +133,11 @@ workflow `publish-wasm.yml` du dépôt `ghostpass`.
 l'instance n'héberge pas encore.
 
 ## État
+
+**Lecture seule.** L'extension consulte et remplit ; elle ne crée, ne modifie et ne supprime
+aucune entrée — les seules requêtes d'écriture qu'elle émette sont `prelogin` et `login`. C'est un
+arbitrage assumé, pas un manque à combler : la fiche du Store doit l'annoncer dès sa première
+ligne, faute de quoi l'utilisateur le découvre en pleine création de compte.
 
 MVP : déverrouillage + liste + copie (avec **auto-effacement du presse-papier**), **session dans le
 service worker** avec **verrouillage automatique** (délai réglable), **autofill** de l'onglet actif,
