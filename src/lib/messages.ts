@@ -15,7 +15,23 @@ export type Message =
    * ne doit donc rien recevoir qu'un script malveillant du site pourrait lire. */
   | { type: "countForHost"; host: string }
   /** Remplir l'onglet d'où vient le message, avec le meilleur candidat. */
-  | { type: "fillActiveTab" };
+  | { type: "fillActiveTab" }
+  /** L'identifiant à saisir, demandé par le script de contenu pour SA page.
+   *
+   * Le service worker vérifie que l'hôte de l'onglet appelant correspond à une
+   * adresse enregistrée sur l'élément — la page ne choisit rien, elle demande.
+   * Voir l'en-tête de `lib/remplir.ts` pour pourquoi c'est le script de
+   * contenu qui remplit, et non `scripting.executeScript`. */
+  | { type: "credentialForFill" };
+
+export interface CredentialResult {
+  ok: boolean;
+  /** Présent seulement si UN SEUL identifiant correspond à l'hôte appelant. */
+  cred?: { username: string; password: string };
+  /** Plusieurs candidats : l'appelant doit ouvrir le popup pour choisir. */
+  plusieurs?: number;
+  error?: string;
+}
 
 export interface FillResult {
   ok: boolean;

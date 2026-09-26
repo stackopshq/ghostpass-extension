@@ -15,6 +15,7 @@ import {
   unlock,
   type DecryptedItem,
 } from "./lib/crypto.js";
+import { fillCredentialsInPage } from "./lib/remplir.js";
 import {
   ecrireLeCoffre,
   lireLeCoffre,
@@ -25,6 +26,7 @@ import {
 /** Le magasin réel, donné aux fonctions du cache. */
 const magasin = browser.storage.local;
 import {
+  type CredentialResult,
   getAutoLockMinutes,
   pourLHote,
   type FillResult,
@@ -34,7 +36,18 @@ import {
 } from "./lib/messages.js";
 
 const ALARM = "ghostpass-autolock";
-const SESSION_KEY = "session";
+// La clé porte une VERSION, et c'est ce qui a manqué.
+//
+// `storage.session` survit au rechargement de l'extension. Quand `DecryptedItem`
+// est passé de `url` à `uris`, une session écrite par la version précédente a
+// donc été relue par la nouvelle : `item.uris.some(...)` levait, le tri par
+// domaine cassait en silence, et le popup montrait ses entrées dans le
+// désordre — sans une erreur visible.
+//
+// Changer ce nom à chaque changement de forme rend la session d'avant
+// simplement introuvable, donc un déverrouillage de plus, plutôt qu'un écran
+// qui se comporte mal.
+const SESSION_KEY = "session.v2";
 
 interface Session {
   items: DecryptedItem[];
@@ -180,45 +193,6 @@ async function doUnlock(email: string, password: string, totpCode?: string): Pro
 // Cible le formulaire de connexion (champ mot de passe visible + identifiant associé) ; gère les
 // pages sans mot de passe (flux « identifiant d'abord »), ignore les champs cachés/désactivés, et
 // ne se laisse pas piéger par une barre de recherche.
-function fillCredentialsInPage(cred: { username: string; password: string }): {
-  username: boolean;
-  password: boolean;
-} {
-  const visible = (el: HTMLInputElement) =>
-    el.offsetParent !== null && !el.disabled && !el.readOnly && el.type !== "hidden";
-  const setValue = (el: HTMLInputElement | null, value: string) => {
-    if (!el || !value) return false;
-    el.focus();
-    el.value = value;
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
-  };
-
-  const pw = [...document.querySelectorAll<HTMLInputElement>('input[type="password"]')].find(visible) ?? null;
-
-  // Identifiant : d'abord dans le formulaire du mot de passe, sinon à l'échelle de la page.
-  const scope = pw?.form
-    ? [...pw.form.querySelectorAll<HTMLInputElement>("input")].filter(visible)
-    : [...document.querySelectorAll<HTMLInputElement>("input")].filter(visible);
-  const hint = (i: HTMLInputElement) => `${i.autocomplete} ${i.name} ${i.id}`.toLowerCase();
-  let user =
-    scope.find((i) => (i.autocomplete || "").toLowerCase() === "username") ??
-    scope.find((i) => i.type === "email") ??
-    scope.find((i) => /user|email|login|mail/.test(hint(i))) ??
-    null;
-  // Sinon : dernier champ texte visible précédant le mot de passe.
-  if (!user && pw) {
-    const before = scope.slice(0, scope.indexOf(pw));
-    user = before.reverse().find((i) => ["text", "email", "tel"].includes(i.type)) ?? null;
-  }
-  // Page sans mot de passe (identifiant d'abord) : premier champ texte/email visible.
-  if (!user && !pw) {
-    user = scope.find((i) => ["text", "email", "tel"].includes(i.type)) ?? null;
-  }
-
-  return { username: setValue(user, cred.username), password: setValue(pw, cred.password) };
-}
 
 async function doFill(itemId: string, tabId: number): Promise<FillResult> {
   const s = await readSession();
@@ -295,6 +269,27 @@ async function remplirLOngletAppelant(
   return doFill(seul.id, tabId);
 }
 
+/** L'identifiant pour l'hôte de l'onglet APPELANT, ou rien.
+ *
+ * Le garde est ici, et c'est le seul qui compte : l'hôte vient de
+ * `sender.tab.url`, que le navigateur renseigne — jamais du message, qu'une
+ * page pourrait forger. Un identifiant ne part donc que vers une page dont
+ * l'hôte correspond à une adresse enregistrée sur cet élément.
+ */
+async function identifiantPourLAppelant(url: string | undefined): Promise<CredentialResult> {
+  if (!url) return { ok: false, error: "Onglet inconnu." };
+  const s = await readSession();
+  if (!s || s.expiresAt <= Date.now()) return { ok: false, error: "Coffre verrouillé." };
+
+  const candidats = pourLHote(s.items, url);
+  if (candidats.length === 0) return { ok: false, error: "Aucun identifiant pour ce site." };
+  if (candidats.length > 1) return { ok: false, plusieurs: candidats.length };
+
+  const seul = candidats[0];
+  if (!seul) return { ok: false, error: "Aucun identifiant pour ce site." };
+  return { ok: true, cred: { username: seul.username, password: seul.password } };
+}
+
 browser.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
   (async () => {
     try {
@@ -323,6 +318,9 @@ browser.runtime.onMessage.addListener((message: Message, sender, sendResponse) =
           break;
         case "countForHost":
           sendResponse(await compterPourLHote(message.host));
+          break;
+        case "credentialForFill":
+          sendResponse(await identifiantPourLAppelant(sender.tab?.url));
           break;
         case "fillActiveTab":
           // L'onglet vient de l'EXPÉDITEUR, jamais du message : une page ne

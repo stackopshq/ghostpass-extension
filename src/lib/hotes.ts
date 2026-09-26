@@ -32,7 +32,10 @@ export function hostsMatch(a: string | null, b: string | null): boolean {
  * dès qu'un côté est nul. Le contraire ferait apparaître une proposition sur
  * chaque page du web.
  */
-export function pourLHote<T extends { uris: string[] }>(items: T[], host: string): T[] {
+export function pourLHote<T extends { uris?: string[] }>(items: T[], host: string): T[] {
   const cible = hostFromUrl(host);
-  return items.filter((i) => i.uris.some((u) => hostsMatch(hostFromUrl(u), cible)));
+  // `?? []` pour la même raison que dans le popup : une entrée d'une forme
+  // antérieure ne doit pas faire lever la règle, elle doit simplement ne
+  // correspondre à rien.
+  return items.filter((i) => (i.uris ?? []).some((u) => hostsMatch(hostFromUrl(u), cible)));
 }

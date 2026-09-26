@@ -40,7 +40,10 @@
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
   function matches(item: DecryptedItem): boolean {
-    return item.uris.some((u) => hostsMatch(hostFromUrl(u), activeHost));
+    // `?? []` : une entrée d'une forme inattendue ne doit pas faire LEVER le
+    // tri. Quand cela est arrivé, la liste s'affichait en désordre sans
+    // qu'aucune erreur ne paraisse — le pire des deux mondes.
+    return (item.uris ?? []).some((u) => hostsMatch(hostFromUrl(u), activeHost));
   }
 
   // Filtre par recherche, puis remonte les identifiants du domaine de l'onglet actif.
