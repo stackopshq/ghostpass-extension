@@ -272,9 +272,25 @@ async function remplirLOngletAppelant(
   const s = await readSession();
   if (!s || s.expiresAt <= Date.now()) return { ok: false, error: "Coffre verrouillé." };
   const candidats = pourLHote(s.items, url);
+  if (candidats.length === 0) return { ok: false, error: "Aucun identifiant pour ce site." };
+
   const seul = candidats.length === 1 ? candidats[0] : undefined;
   if (!seul) {
-    return { ok: false, error: "Plusieurs identifiants : ouvrez GhostPass pour choisir." };
+    // Plusieurs candidats : on n'en choisit AUCUN — remplir au hasard poserait
+    // le mauvais compte sans le dire. On ouvre le popup, qui les montre et
+    // laisse choisir. `openPopup` exige un geste de l'utilisateur, et le clic
+    // sur la pastille en est un : il est relayé jusqu'ici par le message.
+    try {
+      await browser.action.openPopup();
+      return { ok: true };
+    } catch {
+      // Chrome antérieur à 127, ou fenêtre sans barre d'outils. On le dit
+      // plutôt que de rendre un « échec » qui n'explique rien.
+      return {
+        ok: false,
+        error: `${candidats.length} identifiants pour ce site : ouvrez GhostPass pour choisir.`,
+      };
+    }
   }
   return doFill(seul.id, tabId);
 }

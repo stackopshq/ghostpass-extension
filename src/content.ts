@@ -63,7 +63,10 @@ function poserLaPastille(champ: HTMLInputElement, nombre: number): void {
 
   const bouton = document.createElement("button");
   bouton.type = "button";
-  bouton.textContent = nombre > 1 ? `Remplir (${nombre})` : "Remplir";
+  // « Choisir » et non « Remplir » quand il y en a plusieurs : le clic ouvrira
+  // GhostPass pour qu'on tranche, il ne remplira rien. Promettre « Remplir »
+  // puis ne pas remplir est ce que Kevin a vu — un bouton qui ment.
+  bouton.textContent = nombre > 1 ? `Choisir (${nombre})` : "Remplir";
   bouton.setAttribute(
     "aria-label",
     nombre > 1
@@ -74,8 +77,8 @@ function poserLaPastille(champ: HTMLInputElement, nombre: number): void {
     "all:unset",
     "box-sizing:border-box",
     "cursor:pointer",
-    "font:600 12px/1 system-ui,sans-serif",
-    "padding:6px 10px",
+    "font:600 11px/1 system-ui,sans-serif",
+    "padding:5px 9px",
     "border-radius:9999px",
     "background:#1f6feb",
     "color:#fff",
@@ -86,25 +89,54 @@ function poserLaPastille(champ: HTMLInputElement, nombre: number): void {
     bouton.disabled = true;
     bouton.textContent = "…";
     // Le service worker remplit. Ce script ne voit toujours aucun secret.
-    chrome.runtime.sendMessage({ type: "fillActiveTab" }, (r: { ok?: boolean }) => {
-      bouton.textContent = r?.ok ? "Rempli" : "Échec";
-      setTimeout(() => hote.remove(), 1200);
-    });
+    chrome.runtime.sendMessage(
+      { type: "fillActiveTab" },
+      (r: { ok?: boolean; error?: string }) => {
+        if (r?.ok) {
+          bouton.textContent = "Rempli";
+          setTimeout(() => hote.remove(), 1200);
+          return;
+        }
+        // La RAISON, et non « Échec ». Un bouton qui échoue sans dire pourquoi
+        // laisse chercher ; celui-ci disait « Échec » alors qu'il y avait
+        // simplement trois identifiants et qu'il fallait en choisir un.
+        bouton.textContent = r?.error ?? "Échec";
+        bouton.style.background = "#8a2020";
+        bouton.style.maxWidth = "min(22rem, 60vw)";
+        bouton.style.whiteSpace = "normal";
+        bouton.style.textAlign = "left";
+        setTimeout(() => hote.remove(), 4000);
+      },
+    );
   });
 
   racine.appendChild(bouton);
   document.body.appendChild(hote);
 
+  // Mesurer exige que l'élément soit DANS le document : avant, toutes ses
+  // dimensions valent zéro et la pastille se pose au mauvais endroit.
   const placer = () => {
-    const b = champ.getBoundingClientRect();
-    // Collée au bord droit du champ, à l'intérieur. `scrollX/Y` parce que la
-    // pastille est en `absolute` dans le document, pas dans la fenêtre.
-    hote.style.left = `${window.scrollX + b.right - 74}px`;
-    hote.style.top = `${window.scrollY + b.top + (b.height - 26) / 2}px`;
+    const champBoite = champ.getBoundingClientRect();
+    // La largeur RÉELLE du bouton, mesurée après insertion. Elle était écrite
+    // en dur à 74 px, et « Choisir (3) » est plus large : la pastille
+    // débordait hors du champ, à cheval sur sa bordure.
+    const pastille = bouton.getBoundingClientRect();
+    const marge = 6;
+    hote.style.left = `${window.scrollX + champBoite.right - pastille.width - marge}px`;
+    hote.style.top = `${
+      window.scrollY + champBoite.top + (champBoite.height - pastille.height) / 2
+    }px`;
   };
   placer();
   window.addEventListener("scroll", placer, { passive: true });
   window.addEventListener("resize", placer, { passive: true });
+
+  // Dès que la personne tape, la proposition s'efface.
+  //
+  // Elle est posée PAR-DESSUS le champ : laissée là, elle masquerait la fin
+  // d'un mot de passe long. Et quelqu'un qui tape a déjà répondu à la question
+  // qu'elle posait.
+  champ.addEventListener("input", () => hote.remove(), { once: true });
 }
 
 async function regarder(): Promise<void> {
