@@ -26,6 +26,7 @@ import {
 const magasin = browser.storage.local;
 import {
   getAutoLockMinutes,
+  pourLHote,
   type FillResult,
   type Message,
   type StateResult,
@@ -244,7 +245,41 @@ async function currentState(): Promise<StateResult> {
   return { unlocked: false };
 }
 
-browser.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
+/** Combien d'identifiants pour cet hôte — un NOMBRE, et rien d'autre.
+ *
+ * Le script de contenu tourne dans le contexte de la page, aux côtés du code
+ * du site. Lui rendre des noms, des adresses ou a fortiori des mots de passe
+ * les mettrait à portée de n'importe quel script de cette page. Un nombre
+ * suffit à décider s'il faut proposer quelque chose.
+ */
+async function compterPourLHote(host: string): Promise<{ ok: boolean; nombre: number; verrouille: boolean }> {
+  const s = await readSession();
+  if (!s || s.expiresAt <= Date.now()) return { ok: true, nombre: 0, verrouille: true };
+  return { ok: true, nombre: pourLHote(s.items, host).length, verrouille: false };
+}
+
+/** Remplit l'onglet d'où vient le message, avec le seul candidat s'il n'y en a qu'un.
+ *
+ * Quand il y en a plusieurs, on n'en choisit AUCUN : remplir au hasard poserait
+ * le mauvais compte sans le dire, et l'utilisateur s'en apercevrait après avoir
+ * validé. Le popup, lui, les montre et laisse choisir.
+ */
+async function remplirLOngletAppelant(
+  tabId: number | undefined,
+  url: string | undefined,
+): Promise<FillResult> {
+  if (tabId === undefined || !url) return { ok: false, error: "Onglet inconnu." };
+  const s = await readSession();
+  if (!s || s.expiresAt <= Date.now()) return { ok: false, error: "Coffre verrouillé." };
+  const candidats = pourLHote(s.items, url);
+  const seul = candidats.length === 1 ? candidats[0] : undefined;
+  if (!seul) {
+    return { ok: false, error: "Plusieurs identifiants : ouvrez GhostPass pour choisir." };
+  }
+  return doFill(seul.id, tabId);
+}
+
+browser.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
   (async () => {
     try {
       switch (message?.type) {
@@ -269,6 +304,14 @@ browser.runtime.onMessage.addListener((message: Message, _sender, sendResponse) 
           break;
         case "fill":
           sendResponse(await doFill(message.itemId, message.tabId));
+          break;
+        case "countForHost":
+          sendResponse(await compterPourLHote(message.host));
+          break;
+        case "fillActiveTab":
+          // L'onglet vient de l'EXPÉDITEUR, jamais du message : une page ne
+          // doit pas pouvoir désigner un autre onglet que le sien.
+          sendResponse(await remplirLOngletAppelant(sender.tab?.id, sender.tab?.url));
           break;
         default:
           sendResponse({ ok: false, error: "unknown message" });

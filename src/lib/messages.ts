@@ -8,7 +8,14 @@ export type Message =
   | { type: "lock" }
   /** Déconnexion : efface le cache chiffré, pas seulement la session. */
   | { type: "logout" }
-  | { type: "fill"; itemId: string; tabId: number };
+  | { type: "fill"; itemId: string; tabId: number }
+  /** Combien d'identifiants pour cet hôte ? Rend un NOMBRE, jamais un secret.
+   *
+   * Posée par le script de contenu, qui tourne dans le contexte de la page. Il
+   * ne doit donc rien recevoir qu'un script malveillant du site pourrait lire. */
+  | { type: "countForHost"; host: string }
+  /** Remplir l'onglet d'où vient le message, avec le meilleur candidat. */
+  | { type: "fillActiveTab" };
 
 export interface FillResult {
   ok: boolean;
@@ -17,22 +24,10 @@ export interface FillResult {
   error?: string;
 }
 
-/** Hostname normalisé (sans `www.`) d'une URL éventuellement sans schéma. `null` si invalide. */
-export function hostFromUrl(url: string): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url.includes("://") ? url : `https://${url}`);
-    return u.hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-/** Vrai si deux hôtes correspondent (égaux ou l'un sous-domaine de l'autre). */
-export function hostsMatch(a: string | null, b: string | null): boolean {
-  if (!a || !b) return false;
-  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
-}
+// Les règles de domaine vivent dans `hotes.ts`, qui n'importe rien et se
+// laisse donc éprouver sous Node. Ré-exportées ici pour que les appelants
+// existants n'aient pas à changer d'import.
+export { hostFromUrl, hostsMatch, pourLHote } from "./hotes.js";
 
 export interface UnlockResult {
   ok: boolean;

@@ -35,6 +35,23 @@ export default defineManifest((env) => {
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     },
+    // Le script de contenu, sur TOUS les sites en https. Décidé par Kevin.
+    //
+    // Il DÉTECTE un formulaire de connexion et PROPOSE ; il ne reçoit jamais
+    // d'identifiant ni de mot de passe — voir l'en-tête de `src/content.ts`.
+    // Le remplissage reste dans le service worker, injecté au clic.
+    //
+    // `all_frames` parce que beaucoup de formulaires de connexion vivent dans
+    // une iframe (fournisseurs d'identité, paiement). Sans lui, la proposition
+    // manquerait précisément les pages où elle sert le plus.
+    content_scripts: [
+      {
+        matches: ["https://*/*"],
+        js: ["src/content.ts"],
+        run_at: "document_idle",
+        all_frames: true,
+      },
+    ],
     // activeTab + scripting : injection du remplissage dans l'onglet actif, uniquement au clic
     // « Remplir » (geste utilisateur) — pas de content script permanent ni d'accès large aux pages.
     permissions: ["storage", "alarms", "activeTab", "scripting"],

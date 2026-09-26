@@ -22,7 +22,14 @@ export interface DecryptedItem {
   name: string;
   username: string;
   password: string;
-  url: string;
+  /** TOUTES les adresses de l'élément, jamais la seule première.
+   *
+   * Le format chiffré porte `uris` au pluriel depuis l'origine. L'extension le
+   * rabotait à `uris[0]`, si bien qu'un identifiant valable sur
+   * `connect.ulys.com` ET `user.ulys.com` n'était proposé que sur le premier.
+   * C'est le même défaut que l'application web a corrigé le 2026-09-26, à
+   * l'autre bout du même format. */
+  uris: string[];
 }
 
 export type AccountHandle = Account;
@@ -76,7 +83,7 @@ export function decryptVaultItem(
       name,
       username: d.username ?? "",
       password: d.password ?? "",
-      url: d.uris?.[0] ?? "",
+      uris: Array.isArray(d.uris) ? d.uris.filter((u: unknown) => typeof u === "string" && u) : [],
     },
   };
 }

@@ -40,7 +40,7 @@
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
   function matches(item: DecryptedItem): boolean {
-    return hostsMatch(hostFromUrl(item.url), activeHost);
+    return item.uris.some((u) => hostsMatch(hostFromUrl(u), activeHost));
   }
 
   // Filtre par recherche, puis remonte les identifiants du domaine de l'onglet actif.
