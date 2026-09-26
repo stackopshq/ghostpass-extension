@@ -7,7 +7,7 @@
 // survit au teardown du SW, la session persiste (plus de re-login à chaque ouverture du popup) sans
 // rien persister sur disque ni retenir la moindre clé.
 import { browser } from "./lib/browser.js";
-import { api, loadApiBase } from "./lib/api.js";
+import { api, baseActuelle, loadApiBase } from "./lib/api.js";
 import {
   computeLoginHash,
   decryptVaultItem,
@@ -15,6 +15,15 @@ import {
   unlock,
   type DecryptedItem,
 } from "./lib/crypto.js";
+import {
+  ecrireLeCoffre,
+  lireLeCoffre,
+  oublierLeCoffre,
+  type ElementChiffre,
+} from "./lib/coffre-en-cache.js";
+
+/** Le magasin réel, donné aux fonctions du cache. */
+const magasin = browser.storage.local;
 import {
   getAutoLockMinutes,
   type FillResult,
@@ -70,9 +79,67 @@ async function armAutoLock(): Promise<void> {
   browser.alarms.create(ALARM, { when: expiresAt });
 }
 
+/** Ouvre des éléments chiffrés avec un compte déverrouillé.
+ *
+ * Les registres de l'application web (dossiers vides, partages en cours) sont
+ * stockés comme des items ordinaires : on les ouvre pour savoir ce qu'ils sont,
+ * puis on les écarte. Les montrer donnait deux entrées fantômes sans
+ * identifiant ni mot de passe.
+ */
+function ouvrirLesElements(
+  account: ReturnType<typeof unlock>,
+  chiffres: ElementChiffre[],
+): DecryptedItem[] {
+  const items: DecryptedItem[] = [];
+  for (const d of chiffres) {
+    const opened = decryptVaultItem(account, d.id, d.encryptedKey, d.encryptedData);
+    if (opened.kind === "item") items.push(opened.item);
+  }
+  return items;
+}
+
+/** Déverrouille depuis le cache local, SANS réseau ni second facteur.
+ *
+ * C'est le chemin normal après un verrouillage automatique. Rend `null` quand
+ * il n'y a pas de cache pour ce compte ; lève quand le mot de passe est faux,
+ * ce que l'appelant traduit en « mot de passe invalide » plutôt que de
+ * retomber sur le réseau — un mot de passe faux doit se dire tout de suite.
+ */
+async function deverrouillerDepuisLeCache(
+  email: string,
+  password: string,
+): Promise<UnlockResult | null> {
+  const coffre = await lireLeCoffre(magasin, email, baseActuelle());
+  if (!coffre) return null;
+
+  const account = unlock(email, password, {
+    kdfParams: coffre.kdfParams,
+    encryptedUserKey: coffre.encryptedUserKey,
+    encryptedPrivateKey: coffre.encryptedPrivateKey,
+  });
+  session = { items: ouvrirLesElements(account, coffre.elements), expiresAt: 0 };
+  await armAutoLock();
+  await persist();
+  return { ok: true, items: session.items, depuisLeCache: true };
+}
+
 async function doUnlock(email: string, password: string, totpCode?: string): Promise<UnlockResult> {
   await loadApiBase();
   await ensureCryptoReady();
+
+  // Le cache d'abord, et seulement si aucun code n'est présenté : fournir un
+  // code, c'est demander explicitement une vraie connexion, donc une relève.
+  if (!totpCode) {
+    try {
+      const depuisLeCache = await deverrouillerDepuisLeCache(email, password);
+      if (depuisLeCache) return depuisLeCache;
+    } catch {
+      // Le cache existe et ne s'ouvre pas : le mot de passe est faux. Repasser
+      // par le réseau ne ferait que redemander un code à six chiffres pour
+      // finir par le même refus, quinze secondes plus tard.
+      return { ok: false, error: "Mot de passe maître invalide." };
+    }
+  }
 
   const { kdfParams } = await api.prelogin(email);
   const hash = computeLoginHash(email, password, kdfParams);
@@ -85,14 +152,21 @@ async function doUnlock(email: string, password: string, totpCode?: string): Pro
     encryptedPrivateKey: res.encryptedPrivateKey,
   });
   const { items: dtos } = await api.listItems(res.token);
-  // Les registres de l'application web (dossiers vides, partages en cours) sont stockés comme
-  // des items ordinaires : on les ouvre pour savoir ce qu'ils sont, puis on les écarte. Les
-  // montrer donnait deux entrées fantômes sans identifiant ni mot de passe.
-  const items: DecryptedItem[] = [];
-  for (const d of dtos) {
-    const opened = decryptVaultItem(account, d.id, d.encryptedKey, d.encryptedData);
-    if (opened.kind === "item") items.push(opened.item);
-  }
+  const items = ouvrirLesElements(account, dtos);
+
+  // Le coffre CHIFFRÉ est gardé, pour que le prochain déverrouillage se passe
+  // de réseau et de second facteur. Voir `lib/coffre-en-cache.ts` pour ce que
+  // cela coûte, et pourquoi tous les gestionnaires comparables l'acceptent.
+  await ecrireLeCoffre(magasin, {
+    email,
+    base: baseActuelle(),
+    kdfParams: res.kdfParams,
+    encryptedUserKey: res.encryptedUserKey,
+    encryptedPrivateKey: res.encryptedPrivateKey,
+    elements: dtos,
+    releveA: Date.now(),
+  });
+
   // À partir d'ici, ni `password`, ni `account` (clés), ni `res.token` ne sont conservés.
 
   session = { items, expiresAt: 0 };
@@ -182,6 +256,15 @@ browser.runtime.onMessage.addListener((message: Message, _sender, sendResponse) 
           break;
         case "lock":
           await lock();
+          sendResponse({ ok: true });
+          break;
+        case "logout":
+          // Verrouiller ET oublier le coffre chiffré. Sans le second, « se
+          // déconnecter » ne déconnecterait de rien : le prochain mot de passe
+          // maître rouvrirait le cache, et le compte resterait joignable sur
+          // cette machine après qu'on a cru l'en retirer.
+          await lock();
+          await oublierLeCoffre(magasin);
           sendResponse({ ok: true });
           break;
         case "fill":

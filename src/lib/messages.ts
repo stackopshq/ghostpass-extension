@@ -6,6 +6,8 @@ export type Message =
   | { type: "unlock"; email: string; password: string; totpCode?: string }
   | { type: "getState" }
   | { type: "lock" }
+  /** Déconnexion : efface le cache chiffré, pas seulement la session. */
+  | { type: "logout" }
   | { type: "fill"; itemId: string; tabId: number };
 
 export interface FillResult {
@@ -37,6 +39,12 @@ export interface UnlockResult {
   items?: DecryptedItem[];
   mfaRequired?: boolean;
   error?: string;
+  /** Vrai quand le coffre a été ouvert depuis le cache, sans toucher au réseau.
+   *
+   * L'écran s'en sert pour dire que les éléments peuvent dater, et proposer une
+   * relève. Sans cette indication, un coffre vieux d'une semaine ressemblerait
+   * à un coffre à jour. */
+  depuisLeCache?: boolean;
 }
 
 export interface StateResult {

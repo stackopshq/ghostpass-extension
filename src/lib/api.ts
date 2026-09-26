@@ -25,6 +25,11 @@ function requireBase(): string {
   return apiBase;
 }
 
+/** L'adresse du serveur en vigueur, pour savoir à qui un cache appartient. */
+export function baseActuelle(): string {
+  return apiBase;
+}
+
 export async function loadApiBase(): Promise<void> {
   try {
     const { apiBase: stored } = await browser.storage.local.get("apiBase");

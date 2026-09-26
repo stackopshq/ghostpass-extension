@@ -19,6 +19,9 @@
   let password = $state("");
   let totpCode = $state("");
   let mfaRequired = $state(false);
+  // Le coffre vient-il du cache local ? Il peut alors dater, et on le dit :
+  // un coffre vieux d'une semaine ressemble sinon à un coffre à jour.
+  let depuisLeCache = $state(false);
 
   // La session vit dans le service worker ; le popup n'en est qu'une vue.
   let unlocked = $state(false);
@@ -99,12 +102,38 @@
       mfaRequired = false;
       unlocked = true;
       items = res.items ?? [];
+      depuisLeCache = !!res.depuisLeCache;
       await loadActiveTab();
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     } finally {
       busy = false;
     }
+  }
+
+  /** Relève le coffre depuis le serveur, donc avec un second facteur si besoin.
+   *
+   * On reverrouille d'abord : sans cela le déverrouillage suivant repartirait
+   * du cache, et le bouton ne ferait rien de visible.
+   */
+  async function relever() {
+    await lock();
+    depuisLeCache = false;
+    mfaRequired = false;
+    error = "Saisissez votre mot de passe maître pour relever le coffre.";
+  }
+
+  async function seDeconnecter() {
+    try {
+      await send({ type: "logout" });
+    } catch {
+      /* ignore */
+    }
+    unlocked = false;
+    items = [];
+    depuisLeCache = false;
+    revealed = new Set();
+    copiedId = null;
   }
 
   async function lock() {
@@ -193,6 +222,10 @@
     <div class="bar">
       <input placeholder="Rechercher…" bind:value={search} style="flex:1" />
       <button class="link" onclick={lock}>Verrouiller</button>
+      {#if depuisLeCache}
+        <button class="link" onclick={relever} title="Recharger depuis le serveur">Relever</button>
+      {/if}
+      <button class="link" onclick={seDeconnecter}>Se déconnecter</button>
     </div>
     {#if filtered.length === 0}
       <p class="muted">Aucun secret.</p>
