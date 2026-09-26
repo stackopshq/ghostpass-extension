@@ -26,6 +26,8 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tsconfig/svelte": "^5.0.0",
     "@types/chrome": "*",
+    "@types/jsdom": "^30.0.0",
+    "jsdom": "^30.1.1",
     "svelte": "^5.15.0",
     "svelte-check": "^4.1.0",
     "typescript": "^5.7.0",
