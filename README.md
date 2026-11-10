@@ -36,15 +36,16 @@ ghostpass-extension/
 
 ## Prérequis
 
-Le cœur crypto est tiré du **registre npm de l'instance Gitea** (`@stackops/ghostpass-crypto-wasm`).
-Authentifie npm avec un PAT portant le scope `read:package` :
+Le cœur crypto est tiré du **registre npm du projet GitLab `ghostpass`**
+(`@stackops/ghostpass-crypto-wasm`). Authentifie npm avec un jeton GitLab portant le scope
+`read_api` :
 
 ```bash
-export NODE_AUTH_TOKEN="<PAT Gitea, scope read:package>"
+export NODE_AUTH_TOKEN="<jeton GitLab, scope read_api>"
 ```
 
-Publier une nouvelle version du WASM : lancer le workflow **Publish WASM** du dépôt `ghostpass`,
-puis bumper la version dans `package.json`.
+Publier une nouvelle version du WASM : lancer le job manuel **publier-wasm** du pipeline de `main`
+du projet `ghostpass`, puis bumper la version dans `package.json`.
 
 ## Développer
 
@@ -124,13 +125,12 @@ non dans le navigateur au moment de la soumission.
 
 ## CI
 
-`/.gitea/workflows/ci.yml` installe le WASM depuis le registre npm de l'instance Gitea. Le jeton
-auto-injecté par Gitea Actions ne porte pas de scope `package` : la CI utilise le PAT
-`REGISTRY_TOKEN`, partagé au niveau de l'organisation `stackops`. Le paquet est publié par le
-workflow `publish-wasm.yml` du dépôt `ghostpass`.
+`.gitlab-ci.yml` installe le WASM depuis le registre npm du projet `ghostpass` avec
+`CI_JOB_TOKEN` : `ghostpass` autorise ce projet dans sa liste d'accès des jetons de job (gérée
+dans `gitlab-admin`). Le paquet est publié par le job `publier-wasm` de `ghostpass`.
 
-`/.gitea/workflows/safari.yml` est **manuel uniquement** : il exige un runner macOS, que
-l'instance n'héberge pas encore.
+Le job `safari` est **manuel uniquement** : il exige un runner macOS (tag `macos`), que le groupe
+n'héberge pas encore.
 
 ## État
 

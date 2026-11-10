@@ -1,0 +1,172 @@
+# ghostpass-extension CI, ported from .gitea/workflows/ (ci, safari) when the
+# repository moved to GitLab.
+#
+# Linux jobs run on the group's own runners (core-run-03/04, tag `linux`).
+# The WASM crypto core (@stackops/ghostpass-crypto-wasm) comes from the npm
+# registry of the ghostpass project, read with CI_JOB_TOKEN (ghostpass allows
+# this project in its job token allowlist, managed in gitlab-admin). It is
+# published by the manual `publier-wasm` job of ghostpass.
+#
+# Schedules are told apart by their description (the project allows no
+# pipeline variables): "Weekly security", "Weekly renovate".
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # No branch pipeline on top of an MR pipeline for the same commit.
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+stages:
+  - verify
+  - security
+  - package
+
+default:
+  tags: [linux]
+  interruptible: true
+  timeout: 15m
+
+variables:
+  NODE_IMAGE: docker.io/library/node:24-bookworm-slim
+  OSV_SCANNER_IMAGE: ghcr.io/google/osv-scanner:v2.3.6
+  GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1
+  npm_config_cache: $CI_PROJECT_DIR/.npm
+
+.code:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_success
+
+.security:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION != "Weekly security"
+      when: never
+    - when: on_success
+
+.node:
+  image: $NODE_IMAGE
+  variables:
+    NODE_AUTH_TOKEN: $CI_JOB_TOKEN
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+  before_script:
+    - npm ci
+
+build:
+  stage: verify
+  extends: [.code, .node]
+  script:
+    - npm run check
+    # `node --test` reads TypeScript natively since Node 22.
+    - npm test
+    - npm run build
+    # build:firefox rewrites the manifest for Firefox; web-ext lint fails on
+    # errors (not warnings), keeping the Firefox package valid on every change.
+    - npm run build:firefox
+    - npx --yes web-ext@8 lint --source-dir=dist-firefox
+
+# The ZIP uploaded to the Chrome Web Store, built from the commit alone and
+# kept with the pipeline: "where does the published package come from?" always
+# has an answer. `npm run package` checks the version, the manifest and the
+# icons; the archive is deterministic (same commit, same bytes).
+package:
+  stage: package
+  extends: [.code, .node]
+  needs: []
+  script:
+    - npm run package
+  artifacts:
+    name: ghostpass-chrome-$CI_COMMIT_SHORT_SHA
+    paths:
+      - artifacts/ghostpass-chrome-*.zip
+      - artifacts/ghostpass-chrome-*.zip.sha256
+    expire_in: 30 days
+
+# Safari needs macOS + Xcode. Manual until a macOS runner (tag `macos`) is
+# registered on the group; without one the job stays pending, so it is never
+# triggered automatically.
+safari:
+  stage: package
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: manual
+      allow_failure: true
+  needs: []
+  tags: [macos]
+  variables:
+    NODE_AUTH_TOKEN: $CI_JOB_TOKEN
+  script:
+    - npm ci
+    - npm run build
+    - >-
+      xcrun safari-web-extension-converter dist
+      --project-location safari --app-name GhostPass
+      --bundle-identifier hq.stackops.ghostpass
+      --swift --no-open --force
+    - |
+      set -euo pipefail
+      PROJ=$(find safari -maxdepth 3 -name '*.xcodeproj' | head -1)
+      echo "Xcode project: $PROJ"
+      SCHEME=$(xcodebuild -list -project "$PROJ" \
+        | awk '/Schemes:/{f=1;next} f&&NF{sub(/^[ \t]+/,"");print}' \
+        | grep -i 'macos' | head -1)
+      [ -n "$SCHEME" ] || SCHEME=$(xcodebuild -list -project "$PROJ" \
+        | awk '/Schemes:/{f=1;next} f&&NF{sub(/^[ \t]+/,"");print;exit}')
+      echo "Building scheme: $SCHEME"
+      xcodebuild -project "$PROJ" -scheme "$SCHEME" \
+        -configuration Debug -destination 'platform=macOS' \
+        CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+        build
+
+osv-scanner:
+  stage: security
+  extends: [.security]
+  needs: []
+  image:
+    name: $OSV_SCANNER_IMAGE
+    entrypoint: [""]
+  script:
+    - /osv-scanner scan source --lockfile=package-lock.json
+
+gitleaks:
+  stage: security
+  extends: [.security]
+  needs: []
+  image:
+    name: $GITLEAKS_IMAGE
+    entrypoint: [""]
+  variables:
+    # Full history: the scan covers every commit, not the tip.
+    GIT_DEPTH: 0
+  script:
+    - gitleaks detect --source . --no-banner --redact --exit-code 1
+
+# Dependency updates, opened as merge requests here.
+renovate:
+  stage: verify
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SCHEDULE_DESCRIPTION == "Weekly renovate" && $RENOVATE_TOKEN
+  needs: []
+  image:
+    name: docker.io/renovate/renovate:44.132.5
+    entrypoint: [""]
+  timeout: 30m
+  variables:
+    RENOVATE_PLATFORM: gitlab
+    RENOVATE_ENDPOINT: $CI_API_V4_URL
+    RENOVATE_REPOSITORIES: $CI_PROJECT_PATH
+    RENOVATE_AUTODISCOVER: "false"
+    RENOVATE_ONBOARDING: "false"
+    RENOVATE_REQUIRE_CONFIG: required
+    RENOVATE_GIT_AUTHOR: "Renovate Bot <renovate@stackops.ch>"
+    LOG_LEVEL: info
+  script:
+    - renovate
