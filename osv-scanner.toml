@@ -1,0 +1,8 @@
+# No fixed release exists: every deepmerge up to 4.3.1 is affected. It is only
+# reached through @sveltejs/vite-plugin-svelte, at build time, on the
+# project's own configuration objects: no untrusted input is merged, and
+# nothing of it ships in the extension. Expires so the decision is reviewed.
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2027-02-10
+reason = "No fix upstream; build-time only via vite-plugin-svelte, merges trusted config, not shipped"
