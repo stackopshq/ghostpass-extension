@@ -20,7 +20,7 @@ extension auto-distribuée ne s'installe que si on en a le lien : personne ne la
 cherchant « GhostPass » dans Firefox.
 
 Le dépôt est déjà réglé pour ce choix : `scripts/build-firefox.mjs` pose l'identifiant
-`ghostpass@stackops.ch`, `strict_min_version: "128.0"` et la déclaration de collecte de
+`ghostpass@stackops.ch`, `strict_min_version: "140.0"` (142 sur Android, premières versions à lire la déclaration de collecte) et la déclaration de collecte de
 données qu'AMO exige désormais de toute nouvelle extension.
 
 ---
