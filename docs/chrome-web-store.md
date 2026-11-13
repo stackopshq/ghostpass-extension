@@ -56,7 +56,7 @@ l'adresse HTTPS de votre instance GhostPass.
 
 CE QU'ELLE FAIT
 • Déverrouillage par e-mail et mot de passe maître (avec 2FA si votre instance l'exige)
-• Liste et recherche de vos identifiants
+• Liste et recherche de vos identifiants, ceux des coffres d'équipe compris
 • Copie du mot de passe, effacé du presse-papier au bout de 20 secondes
 • Remplissage du formulaire de connexion de l'onglet actif, sur votre clic — jamais
   automatiquement au chargement d'une page

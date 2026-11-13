@@ -53,6 +53,28 @@ export interface ItemDto {
   encryptedData: string;
 }
 
+export interface OrgSummary {
+  orgId: string;
+  name: string;
+  role: string;
+  status: string;
+}
+
+/// L'Org Key scellée pour moi, et la clé publique de celui qui l'a scellée. Les deux sont
+/// nulles tant qu'une invitation n'a pas été acceptée et remise.
+export interface Membership {
+  role: string;
+  status: string;
+  encryptedOrgKey: string | null;
+  sealedByPublicKey: string | null;
+}
+
+export interface CollectionSummary {
+  id: string;
+  name: string;
+  permission: "read" | "write" | "manage";
+}
+
 async function http<T>(
   path: string,
   opts: { method?: string; body?: unknown; token?: string } = {},
@@ -107,4 +129,27 @@ export const api = {
   listItems(token: string) {
     return http<{ items: ItemDto[] }>("/api/vault/items", { token });
   },
+  listOrgs(token: string) {
+    return http<{ organizations: OrgSummary[] }>("/api/orgs", { token });
+  },
+  getMembership(token: string, orgId: string) {
+    return http<Membership>(`/api/orgs/${encodeURIComponent(orgId)}/membership`, { token });
+  },
+  listCollections(token: string, orgId: string) {
+    return http<{ collections: CollectionSummary[] }>(
+      `/api/orgs/${encodeURIComponent(orgId)}/collections`,
+      { token },
+    );
+  },
+  listCollectionItems(token: string, orgId: string, collectionId: string) {
+    return http<{ items: ItemDto[] }>(
+      `/api/orgs/${encodeURIComponent(orgId)}/collections/${encodeURIComponent(collectionId)}/items`,
+      { token },
+    );
+  },
 };
+
+export type TeamApi = Pick<
+  typeof api,
+  "listOrgs" | "getMembership" | "listCollections" | "listCollectionItems"
+>;
