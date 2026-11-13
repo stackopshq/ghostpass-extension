@@ -1,6 +1,6 @@
 // Produit le build Firefox à partir du build Chrome (`dist/`, généré par @crxjs).
 //
-// Deux ajustements suffisent : Firefox veut un `browser_specific_settings.gecko.id` et un
+// Firefox veut un `browser_specific_settings.gecko` (identifiant, collecte de données déclarée) et un
 // background en **event page module** (`background.scripts`) plutôt qu'un `service_worker`
 // (Chromium). Le reste du code est identique (`chrome.*` est aliasé sur Firefox).
 import { cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -16,7 +16,16 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 
 manifest.browser_specific_settings = {
   ...manifest.browser_specific_settings,
-  gecko: { id: "ghostpass@stackops.hq", strict_min_version: "128.0" },
+  gecko: {
+    // Definitive once published on addons.mozilla.org: an id on a domain we own.
+    id: "ghostpass@stackops.ch",
+    strict_min_version: "128.0",
+    // AMO asks every new extension to declare what it transmits. The e-mail address and the
+    // login proof go to the GhostPass server the user configured, which may be one we host.
+    data_collection_permissions: {
+      required: ["personallyIdentifyingInfo", "authenticationInfo"],
+    },
+  },
 };
 
 const serviceWorker = manifest.background?.service_worker;
