@@ -35,7 +35,8 @@
   let fillMsg = $state<string | null>(null);
   let fillTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const CLIPBOARD_CLEAR_MS = 20_000;
+  // Le temps d'afficher « copié » ; l'effacement lui-même est armé dans le service worker.
+  const COPIED_FEEDBACK_MS = 2_000;
 
   // Les codes à usage unique des identifiants qui en ont, recalculés chaque seconde tant que le
   // coffre est ouvert : le popup ne vit que le temps d'un coup d'œil.
@@ -202,12 +203,11 @@
     try {
       await navigator.clipboard.writeText(text);
       copiedId = id;
+      await send({ type: "armClipboardClear" });
       if (clearTimer) clearTimeout(clearTimer);
       clearTimer = setTimeout(() => {
-        // Efface le secret du presse-papier (les gestionnaires font de même après ~20 s).
-        navigator.clipboard.writeText("").catch(() => {});
         if (copiedId === id) copiedId = null;
-      }, CLIPBOARD_CLEAR_MS);
+      }, COPIED_FEEDBACK_MS);
     } catch {
       /* ignore */
     }

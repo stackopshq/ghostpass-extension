@@ -19,6 +19,7 @@ import {
 } from "./lib/crypto.js";
 import { loadTeamVaults } from "./lib/team-vaults.js";
 import {
+  CLIPBOARD_CLEAR_SECONDS,
   getAutoLockMinutes,
   type FillResult,
   type Message,
@@ -27,6 +28,34 @@ import {
 } from "./lib/messages.js";
 
 const ALARM = "ghostpass-autolock";
+const CLIPBOARD_ALARM = "ghostpass-clipboard";
+const OFFSCREEN_URL = "src/offscreen/index.html";
+
+// Le presse-papiers est vidé par le service worker, pas par le popup : un popup se ferme dès
+// qu'on clique ailleurs, et sa minuterie meurt avec lui. Le secret copié restait alors dans le
+// presse-papiers jusqu'à la copie suivante.
+async function clearClipboard(): Promise<void> {
+  const offscreen = (globalThis as { chrome?: typeof chrome }).chrome?.offscreen;
+  if (!offscreen) {
+    // Firefox : la page d'arrière-plan a un document, et `clipboardWrite` l'autorise à écrire.
+    await navigator.clipboard.writeText("");
+    return;
+  }
+  try {
+    await offscreen.createDocument({
+      url: OFFSCREEN_URL,
+      reasons: [offscreen.Reason.CLIPBOARD],
+      justification: "Effacer du presse-papiers le secret copié depuis GhostPass.",
+    });
+  } catch {
+    /* déjà ouvert : on s'en sert */
+  }
+  try {
+    await browser.runtime.sendMessage({ target: "offscreen", type: "clearClipboard" });
+  } finally {
+    await offscreen.closeDocument().catch(() => {});
+  }
+}
 const SESSION_KEY = "session";
 
 interface Session {
@@ -204,6 +233,11 @@ browser.runtime.onMessage.addListener((message: Message, _sender, sendResponse) 
         case "fill":
           sendResponse(await doFill(message.itemId, message.tabId));
           break;
+        case "armClipboardClear":
+          // Une nouvelle copie repousse l'effacement : c'est la dernière qui compte.
+          await browser.alarms.create(CLIPBOARD_ALARM, { delayInMinutes: CLIPBOARD_CLEAR_SECONDS / 60 });
+          sendResponse({ ok: true });
+          break;
         default:
           sendResponse({ ok: false, error: "unknown message" });
       }
@@ -216,6 +250,7 @@ browser.runtime.onMessage.addListener((message: Message, _sender, sendResponse) 
 
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM) void lock();
+  if (alarm.name === CLIPBOARD_ALARM) void clearClipboard().catch(() => {});
 });
 
 // storage.session : accessible aux seuls contextes de confiance (jamais aux content scripts).

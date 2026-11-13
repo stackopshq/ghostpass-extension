@@ -6,7 +6,11 @@ export type Message =
   | { type: "unlock"; email: string; password: string; totpCode?: string }
   | { type: "getState" }
   | { type: "lock" }
-  | { type: "fill"; itemId: string; tabId: number };
+  | { type: "fill"; itemId: string; tabId: number }
+  | { type: "armClipboardClear" };
+
+/** Délai avant l'effacement du presse-papiers, le même qu'iOS et Android. */
+export const CLIPBOARD_CLEAR_SECONDS = 30;
 
 export interface FillResult {
   ok: boolean;

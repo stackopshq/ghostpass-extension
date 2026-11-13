@@ -37,7 +37,9 @@ export default defineManifest((env) => {
     },
     // activeTab + scripting : injection du remplissage dans l'onglet actif, uniquement au clic
     // « Remplir » (geste utilisateur) — pas de content script permanent ni d'accès large aux pages.
-    permissions: ["storage", "alarms", "activeTab", "scripting"],
+    // clipboardWrite + offscreen : vider le presse-papiers 30 s après une copie, même popup fermé.
+    // `offscreen` n'existe que sur Chromium ; `build-firefox.mjs` le retire.
+    permissions: ["storage", "alarms", "activeTab", "scripting", "clipboardWrite", "offscreen"],
     // Backend de dev local. **Uniquement en mode développement** : dans un paquet publié, cette
     // permission serait accordée par chaque utilisateur sans jamais lui servir, et un relecteur
     // du Store la verrait. Les utilisateurs pointent l'extension vers leur propre instance depuis
