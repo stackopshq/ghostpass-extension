@@ -57,7 +57,7 @@ l'adresse HTTPS de votre instance GhostPass.
 CE QU'ELLE FAIT
 • Déverrouillage par e-mail et mot de passe maître (avec 2FA si votre instance l'exige)
 • Liste et recherche de vos identifiants, ceux des coffres d'équipe compris
-• Copie du mot de passe, effacé du presse-papier au bout de 20 secondes
+• Copie du mot de passe, effacé du presse-papiers au bout de 30 secondes, même popup fermé
 • Remplissage du formulaire de connexion de l'onglet actif, sur votre clic — jamais
   automatiquement au chargement d'une page
 • Verrouillage automatique après un délai que vous réglez, à la fermeture du navigateur,
@@ -130,6 +130,22 @@ Injecte, sur le clic « Remplir » et sur ce seul geste, une fonction autonome q
 champ identifiant et le champ mot de passe du formulaire de connexion et y saisit la valeur
 choisie. Il n'y a aucun content script déclaré dans le manifeste, donc aucun code exécuté
 sur les pages en dehors de ce clic, et aucun remplissage automatique au chargement.
+```
+
+### `clipboardWrite`
+
+```
+Vide le presse-papiers 30 secondes après que l'utilisateur y a copié un mot de passe ou un
+code à usage unique depuis le popup. L'extension n'écrit dans le presse-papiers que sur ce
+geste de copie, puis pour l'effacer ; elle ne le lit jamais.
+```
+
+### `offscreen`
+
+```
+Un service worker ne peut pas écrire dans le presse-papiers. Pour l'effacer une fois le popup
+fermé, l'extension ouvre un document hors écran, y efface le presse-papiers et le referme
+aussitôt. C'est son seul usage.
 ```
 
 ### `optional_host_permissions: https://*/*`

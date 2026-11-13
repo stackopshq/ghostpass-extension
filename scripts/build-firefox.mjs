@@ -28,6 +28,10 @@ manifest.browser_specific_settings = {
   },
 };
 
+// `offscreen` est propre à Chromium. Firefox efface le presse-papiers depuis sa page
+// d'arrière-plan, qui a un document.
+manifest.permissions = (manifest.permissions ?? []).filter((p) => p !== "offscreen");
+
 const serviceWorker = manifest.background?.service_worker;
 if (serviceWorker) {
   manifest.background = { scripts: [serviceWorker], type: "module" };
