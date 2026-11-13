@@ -241,7 +241,6 @@ le popup ne peut rien afficher.
 ## 6. Construire le paquet soumis
 
 ```bash
-export NODE_AUTH_TOKEN="<jeton GitLab, scope read_api>"
 npm ci
 npm run build:firefox
 npx web-ext lint --source-dir=dist-firefox      # doit passer sans erreur
@@ -249,7 +248,7 @@ cd dist-firefox && zip -r -FS ../artifacts/ghostpass-firefox-<version>.zip . && 
 ```
 
 L'archive **source** à joindre est le dépôt sans `node_modules`, `dist`, `dist-firefox` ni
-`artifacts`, plus le `vendor/` décrit au §5.
+`artifacts` ; `vendor/` (§5) y est déjà.
 
 ---
 

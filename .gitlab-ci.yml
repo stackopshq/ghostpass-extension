@@ -50,8 +50,6 @@ variables:
 
 .node:
   image: $NODE_IMAGE
-  variables:
-    NODE_AUTH_TOKEN: $CI_JOB_TOKEN
   cache:
     key:
       files: [package-lock.json]
@@ -101,8 +99,6 @@ safari:
       allow_failure: true
   needs: []
   tags: [macos]
-  variables:
-    NODE_AUTH_TOKEN: $CI_JOB_TOKEN
   script:
     - npm ci
     - npm run build
