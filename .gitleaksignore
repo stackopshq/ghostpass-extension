@@ -2,3 +2,6 @@
 # that gitleaks reads as a generic API key. The test now derives it at run time; this entry
 # covers the commit that first wrote it as a literal.
 319aef8c9d32c5dba3c7fae313a377a7a982e816:test/totp.test.ts:generic-api-key:7
+
+# A crates.io checksum in the vendored Cargo.lock, which gitleaks reads as a generic API key.
+dfd0a2fad22ca7fb4fad6de5df111da7cc2a4bdb:vendor/source/Cargo.lock:generic-api-key:323
