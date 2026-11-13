@@ -129,6 +129,14 @@ li {
   white-space: nowrap;
 }
 
+.item-team {
+  font-size: 0.72rem;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icon-btn {
   background: var(--surface);
   border: 1px solid var(--line);

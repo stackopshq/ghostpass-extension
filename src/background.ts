@@ -10,11 +10,14 @@ import { browser } from "./lib/browser.js";
 import { api, loadApiBase } from "./lib/api.js";
 import {
   computeLoginHash,
+  decryptOrgItem,
   decryptVaultItem,
   ensureCryptoReady,
+  openOrg,
   unlock,
   type DecryptedItem,
 } from "./lib/crypto.js";
+import { loadTeamVaults } from "./lib/team-vaults.js";
 import {
   getAutoLockMinutes,
   type FillResult,
@@ -28,6 +31,8 @@ const SESSION_KEY = "session";
 
 interface Session {
   items: DecryptedItem[];
+  /** Éléments d'équipe qui n'ont pas pu être ouverts au déverrouillage. */
+  unreadable: number;
   expiresAt: number;
 }
 
@@ -93,12 +98,22 @@ async function doUnlock(email: string, password: string, totpCode?: string): Pro
     const opened = decryptVaultItem(account, d.id, d.encryptedKey, d.encryptedData);
     if (opened.kind === "item") items.push(opened.item);
   }
+  // Les coffres d'équipe, ouverts tant que les clés sont là. Leur échec ne bloque pas le
+  // coffre personnel : il est compté et dit à l'écran.
+  let unreadable = 0;
+  try {
+    const team = await loadTeamVaults(api, res.token, account, { openOrg, decryptOrgItem });
+    items.push(...team.items);
+    unreadable = team.unreadable;
+  } catch {
+    unreadable = 1;
+  }
   // À partir d'ici, ni `password`, ni `account` (clés), ni `res.token` ne sont conservés.
 
-  session = { items, expiresAt: 0 };
+  session = { items, unreadable, expiresAt: 0 };
   await armAutoLock();
   await persist();
-  return { ok: true, items };
+  return { ok: true, items, unreadable };
 }
 
 // Injectée dans la page (contexte isolé) au clic « Remplir ». Autonome : aucune closure.
@@ -165,7 +180,9 @@ async function doFill(itemId: string, tabId: number): Promise<FillResult> {
 
 async function currentState(): Promise<StateResult> {
   const s = await readSession();
-  if (s && s.expiresAt > Date.now()) return { unlocked: true, items: s.items };
+  if (s && s.expiresAt > Date.now()) {
+    return { unlocked: true, items: s.items, unreadable: s.unreadable ?? 0 };
+  }
   if (s) await lock(); // expirée
   return { unlocked: false };
 }

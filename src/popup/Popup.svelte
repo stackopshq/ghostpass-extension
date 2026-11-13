@@ -23,6 +23,7 @@
   // La session vit dans le service worker ; le popup n'en est qu'une vue.
   let unlocked = $state(false);
   let items = $state<DecryptedItem[]>([]);
+  let unreadable = $state(0);
   let search = $state("");
   let revealed = $state<Set<string>>(new Set());
   let copiedId = $state<string | null>(null);
@@ -45,7 +46,12 @@
     items
       .filter((i) => {
         const q = search.trim().toLowerCase();
-        return !q || i.name.toLowerCase().includes(q) || i.username.toLowerCase().includes(q);
+        return (
+          !q ||
+          i.name.toLowerCase().includes(q) ||
+          i.username.toLowerCase().includes(q) ||
+          (i.team?.orgName.toLowerCase().includes(q) ?? false)
+        );
       })
       .sort((a, b) => Number(matches(b)) - Number(matches(a))),
   );
@@ -71,6 +77,7 @@
       if (state?.unlocked && state.items) {
         unlocked = true;
         items = state.items;
+        unreadable = state.unreadable ?? 0;
         await loadActiveTab();
       }
     } catch {
@@ -99,6 +106,7 @@
       mfaRequired = false;
       unlocked = true;
       items = res.items ?? [];
+      unreadable = res.unreadable ?? 0;
       await loadActiveTab();
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
@@ -115,6 +123,7 @@
     }
     unlocked = false;
     items = [];
+    unreadable = 0;
     revealed = new Set();
     copiedId = null;
   }
@@ -194,6 +203,13 @@
       <input placeholder="Rechercher…" bind:value={search} style="flex:1" />
       <button class="link" onclick={lock}>Verrouiller</button>
     </div>
+    {#if unreadable > 0}
+      <p class="muted">
+        {unreadable === 1
+          ? "Un élément d'équipe n'a pas pu être ouvert."
+          : `${unreadable} éléments d'équipe n'ont pas pu être ouverts.`}
+      </p>
+    {/if}
     {#if filtered.length === 0}
       <p class="muted">Aucun secret.</p>
     {:else}
@@ -205,6 +221,9 @@
                 {item.name}{#if matches(item)}<span class="badge" title="Correspond à l'onglet actif">•</span>{/if}
               </div>
               <div class="item-sub">{revealed.has(item.id) ? item.password : item.username || "—"}</div>
+              {#if item.team}
+                <div class="item-team" title="Coffre d'équipe">{item.team.orgName} · {item.team.collectionName}</div>
+              {/if}
             </div>
             <button class="icon-btn fill-btn" title="Remplir dans l'onglet actif" aria-label="Remplir" onclick={() => fill(item)}>⌨</button>
             <button class="icon-btn" title="Afficher" onclick={() => toggle(item.id)}>👁</button>

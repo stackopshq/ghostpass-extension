@@ -35,6 +35,7 @@ export function hostsMatch(a: string | null, b: string | null): boolean {
 export interface UnlockResult {
   ok: boolean;
   items?: DecryptedItem[];
+  unreadable?: number;
   mfaRequired?: boolean;
   error?: string;
 }
@@ -42,6 +43,7 @@ export interface UnlockResult {
 export interface StateResult {
   unlocked: boolean;
   items?: DecryptedItem[];
+  unreadable?: number;
 }
 
 export const DEFAULT_AUTO_LOCK_MINUTES = 15;

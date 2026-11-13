@@ -40,3 +40,43 @@ export const SHARES_ITEM_NAME = "\u0000gp:shares";
 export function isMetadataItem(name: string, kind: string): boolean {
   return kind === "SecureNote" && (name === FOLDERS_ITEM_NAME || name === SHARES_ITEM_NAME);
 }
+
+/// Un élément ouvert, tel que l'extension le montre.
+export interface DecryptedItem {
+  id: string;
+  name: string;
+  username: string;
+  password: string;
+  url: string;
+  /// Présent pour un élément d'un coffre d'équipe : où il vit, pour le dire à l'écran.
+  team?: { orgName: string; collectionName: string };
+}
+
+/// Ce qu'un élément du coffre s'avère être une fois ouvert.
+///
+/// Deux cas, et non un seul : tout ce que le serveur rend n'est pas une entrée à montrer. Les
+/// registres de l'application web (dossiers, partages) sont des items comme les autres pour le
+/// serveur, qui ne lit rien. C'est au client de les reconnaître — voir `isMetadataItem`.
+export type VaultDecryptResult =
+  | { kind: "item"; item: DecryptedItem }
+  | { kind: "metadata"; name: string };
+
+/// Range un élément ouvert (le JSON du `VaultItem` Rust) : entrée à montrer ou registre à taire.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function classifyOpenedItem(id: string, raw: any): VaultDecryptResult {
+  const name: string = typeof raw.name === "string" ? raw.name : "";
+  const itemKind: string = typeof raw.data?.kind === "string" ? raw.data.kind : "";
+  if (isMetadataItem(name, itemKind)) return { kind: "metadata", name };
+
+  const d = raw.data?.data ?? {};
+  return {
+    kind: "item",
+    item: {
+      id,
+      name,
+      username: d.username ?? "",
+      password: d.password ?? "",
+      url: d.uris?.[0] ?? "",
+    },
+  };
+}
