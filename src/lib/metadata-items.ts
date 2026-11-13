@@ -53,6 +53,10 @@ export interface DecryptedItem {
   urls?: string[];
   /// Le type d'élément du cœur (`Login`, `SecureNote`, `Card`…). Seul un `Login` se remplit.
   kind?: string;
+  /// Le secret TOTP d'un identifiant (base32 ou URI `otpauth://`), s'il en a un.
+  totp?: string;
+  /// Les quatre derniers chiffres d'une carte, pour la reconnaître sans l'exposer.
+  cardLast4?: string;
   /// Présent pour un élément d'un coffre d'équipe : où il vit, pour le dire à l'écran.
   team?: { orgName: string; collectionName: string };
 }
@@ -87,6 +91,10 @@ export function classifyOpenedItem(id: string, raw: any): VaultDecryptResult {
       url: urls[0] ?? "",
       urls,
       kind: itemKind,
+      ...(typeof d.totp === "string" && d.totp.trim() ? { totp: d.totp.trim() } : {}),
+      ...(itemKind === "Card" && typeof d.number === "string" && d.number.length >= 4
+        ? { cardLast4: d.number.replace(/\s/g, "").slice(-4) }
+        : {}),
     },
   };
 }
