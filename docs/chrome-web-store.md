@@ -60,6 +60,8 @@ CE QU'ELLE FAIT
 • Copie du mot de passe, effacé du presse-papiers au bout de 30 secondes, même popup fermé
 • Remplissage du formulaire de connexion de l'onglet actif, sur votre clic — jamais
   automatiquement au chargement d'une page
+• Raccourci Ctrl+Maj+L (Cmd+Maj+L sur Mac) : remplit l'identifiant de la page s'il est seul,
+  ouvre GhostPass sinon
 • Verrouillage automatique après un délai que vous réglez, à la fermeture du navigateur,
   ou à la demande
 

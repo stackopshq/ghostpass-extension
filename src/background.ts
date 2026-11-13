@@ -18,6 +18,7 @@ import {
   type DecryptedItem,
 } from "./lib/crypto.js";
 import { loadTeamVaults } from "./lib/team-vaults.js";
+import { hostFromUrl, shortcutAction } from "./lib/site-match.js";
 import {
   CLIPBOARD_CLEAR_SECONDS,
   getAutoLockMinutes,
@@ -246,6 +247,23 @@ browser.runtime.onMessage.addListener((message: Message, _sender, sendResponse) 
     }
   })();
   return true; // réponse asynchrone
+});
+
+// Le raccourci de remplissage. Il ne fait jamais plus que le popup : il remplit l'unique
+// identifiant de la page, et sinon ouvre le popup, où l'utilisateur choisit ou déverrouille.
+browser.commands.onCommand.addListener((command, tab) => {
+  if (command !== "fill-login") return;
+  void (async () => {
+    const target = tab?.id != null ? tab : (await browser.tabs.query({ active: true, currentWindow: true }))[0];
+    const s = await readSession();
+    const open = s && s.expiresAt > Date.now() ? s.items : null;
+    const action = shortcutAction(open, target?.url ? hostFromUrl(target.url) : null);
+    if (action.kind === "fill" && target?.id != null) {
+      const r = await doFill(action.item.id, target.id);
+      if (r.ok && (r.username || r.password)) return;
+    }
+    await browser.action.openPopup().catch(() => {});
+  })();
 });
 
 browser.alarms.onAlarm.addListener((alarm) => {

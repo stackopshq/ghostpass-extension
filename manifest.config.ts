@@ -29,6 +29,14 @@ export default defineManifest((env) => {
     icons: ICONS,
     action: { default_popup: "src/popup/index.html", default_title: "GhostPass", default_icon: ICONS },
     options_ui: { page: "src/options/index.html", open_in_tab: true },
+    // Ctrl+Maj+L comme Bitwarden. Le raccourci accorde `activeTab` sur l'onglet, comme un clic
+    // sur l'icône : il n'élargit aucun accès.
+    commands: {
+      "fill-login": {
+        suggested_key: { default: "Ctrl+Shift+L", mac: "Command+Shift+L" },
+        description: "Remplir l'identifiant de la page",
+      },
+    },
     background: { service_worker: "src/background.ts", type: "module" },
     // Le cœur crypto est du WebAssembly : la CSP MV3 par défaut interdit sa compilation
     // sans 'wasm-unsafe-eval'. Aucun code distant n'est jamais chargé.

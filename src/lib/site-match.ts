@@ -43,3 +43,17 @@ export function suggestionsFor<T extends Matchable>(items: T[], host: string | n
     .filter((i) => (i.kind ?? "Login") === "Login" && matchesHost(i, host))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export type ShortcutAction<T> = { kind: "fill"; item: T } | { kind: "popup" };
+
+/// Ce que fait le raccourci de remplissage : remplir sans rien demander quand il n'y a qu'un
+/// identifiant pour la page, ouvrir le popup sinon — pour choisir parmi plusieurs, ou pour
+/// déverrouiller. Remplir le premier de plusieurs au hasard serait remplir le mauvais compte.
+export function shortcutAction<T extends Matchable>(
+  items: T[] | null,
+  host: string | null,
+): ShortcutAction<T> {
+  if (!items) return { kind: "popup" };
+  const found = suggestionsFor(items, host);
+  return found.length === 1 ? { kind: "fill", item: found[0]! } : { kind: "popup" };
+}
