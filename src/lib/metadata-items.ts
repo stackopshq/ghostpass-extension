@@ -47,7 +47,12 @@ export interface DecryptedItem {
   name: string;
   username: string;
   password: string;
+  /// La première adresse, pour l'affichage.
   url: string;
+  /// Toutes les adresses de l'élément : c'est sur elles que se fait la correspondance avec la page.
+  urls?: string[];
+  /// Le type d'élément du cœur (`Login`, `SecureNote`, `Card`…). Seul un `Login` se remplit.
+  kind?: string;
   /// Présent pour un élément d'un coffre d'équipe : où il vit, pour le dire à l'écran.
   team?: { orgName: string; collectionName: string };
 }
@@ -69,6 +74,9 @@ export function classifyOpenedItem(id: string, raw: any): VaultDecryptResult {
   if (isMetadataItem(name, itemKind)) return { kind: "metadata", name };
 
   const d = raw.data?.data ?? {};
+  const urls: string[] = Array.isArray(d.uris)
+    ? d.uris.filter((u: unknown): u is string => typeof u === "string" && u !== "")
+    : [];
   return {
     kind: "item",
     item: {
@@ -76,7 +84,9 @@ export function classifyOpenedItem(id: string, raw: any): VaultDecryptResult {
       name,
       username: d.username ?? "",
       password: d.password ?? "",
-      url: d.uris?.[0] ?? "",
+      url: urls[0] ?? "",
+      urls,
+      kind: itemKind,
     },
   };
 }

@@ -176,3 +176,28 @@ li.match {
   color: var(--ink-2);
   font-size: 0.82rem;
 }
+
+.section-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0.4rem 0 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggest ul {
+  max-height: none;
+  margin-bottom: 0.6rem;
+}
+
+.fill-primary {
+  padding: 0.35rem 0.7rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #fff;
+  background: var(--accent);
+}

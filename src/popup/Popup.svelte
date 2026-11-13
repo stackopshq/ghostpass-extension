@@ -2,9 +2,8 @@
   import { onMount } from "svelte";
   import { browser } from "../lib/browser.js";
   import type { DecryptedItem } from "../lib/crypto.js";
+  import { hostFromUrl, matchesHost, suggestionsFor } from "../lib/site-match.js";
   import {
-    hostFromUrl,
-    hostsMatch,
     type FillResult,
     type Message,
     type StateResult,
@@ -38,8 +37,13 @@
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
   function matches(item: DecryptedItem): boolean {
-    return hostsMatch(hostFromUrl(item.url), activeHost);
+    return matchesHost(item, activeHost);
   }
+
+  // Les identifiants de la page ouverte, montrés à part et en premier dès le déverrouillage.
+  // Une recherche en cours les fond dans la liste : on cherche alors autre chose.
+  const suggestions = $derived(search.trim() ? [] : suggestionsFor(items, activeHost));
+  const suggested = $derived(new Set(suggestions.map((i) => i.id)));
 
   // Filtre par recherche, puis remonte les identifiants du domaine de l'onglet actif.
   const filtered = $derived(
@@ -53,6 +57,7 @@
           (i.team?.orgName.toLowerCase().includes(q) ?? false)
         );
       })
+      .filter((i) => !suggested.has(i.id))
       .sort((a, b) => Number(matches(b)) - Number(matches(a))),
   );
 
@@ -163,8 +168,11 @@
     try {
       const res = await send<FillResult>({ type: "fill", itemId: item.id, tabId: activeTabId });
       if (!res?.ok) flashFill(res?.error ?? "Échec du remplissage.");
-      else if (res.password) flashFill("Rempli ✓");
-      else if (res.username) flashFill("Identifiant rempli ✓");
+      else if (res.password || res.username) {
+        flashFill(res.password ? "Rempli ✓" : "Identifiant rempli ✓");
+        // Le formulaire est rempli : le popup n'a plus rien à montrer, et il masquerait la page.
+        setTimeout(() => window.close(), 600);
+      }
       else flashFill("Aucun champ trouvé sur la page.");
     } catch {
       flashFill("Échec du remplissage.");
@@ -210,7 +218,34 @@
           : `${unreadable} éléments d'équipe n'ont pas pu être ouverts.`}
       </p>
     {/if}
-    {#if filtered.length === 0}
+    {#if suggestions.length > 0}
+      <section class="suggest" aria-label="Pour ce site">
+        <p class="section-title">Pour {activeHost}</p>
+        <ul>
+          {#each suggestions as item (item.id)}
+            <li>
+              <div class="item-main">
+                <div class="item-name">{item.name}</div>
+                <div class="item-sub">{item.username || "—"}</div>
+                {#if item.team}
+                  <div class="item-team">{item.team.orgName} · {item.team.collectionName}</div>
+                {/if}
+              </div>
+              <button class="fill-primary" onclick={() => fill(item)}>Remplir</button>
+              <button
+                class="icon-btn"
+                title="Copier le mot de passe"
+                onclick={() => copy(item.id, item.password)}
+              >
+                {copiedId === item.id ? "✓" : "⧉"}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </section>
+      {#if filtered.length > 0}<p class="section-title">Tout le coffre</p>{/if}
+    {/if}
+    {#if filtered.length === 0 && suggestions.length === 0}
       <p class="muted">Aucun secret.</p>
     {:else}
       <ul>
