@@ -1,0 +1,4 @@
+# The RFC 6238 appendix B test key ("12345678901234567890" in base32), a public test vector
+# that gitleaks reads as a generic API key. The test now derives it at run time; this entry
+# covers the commit that first wrote it as a literal.
+319aef8c9d32c5dba3c7fae313a377a7a982e816:test/totp.test.ts:generic-api-key:7
