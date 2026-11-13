@@ -4,6 +4,7 @@
   import type { DecryptedItem } from "../lib/crypto.js";
   import { hostFromUrl, matchesHost, suggestionsFor } from "../lib/site-match.js";
   import { generateOtp, parseOtp } from "../lib/totp.js";
+  import { DEFAULT_GEN_OPTIONS, generatePassword, type GenOptions } from "../lib/generator.js";
   import {
     type FillResult,
     type Message,
@@ -59,6 +60,24 @@
     void tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
+  });
+
+  // Le générateur : disponible coffre fermé comme ouvert, il ne touche pas au coffre. Les réglages
+  // ne sont pas conservés : l'extension ne garde que l'adresse du serveur et le délai de verrouillage.
+  let genOpen = $state(false);
+  let genOpts = $state<GenOptions>({ ...DEFAULT_GEN_OPTIONS });
+  let generated = $state("");
+  function regenerate() {
+    generated = generatePassword(genOpts);
+  }
+  function toggleGenerator() {
+    genOpen = !genOpen;
+  }
+  // Un nouveau mot de passe à l'ouverture et à chaque réglage modifié.
+  $effect(() => {
+    if (!genOpen) return;
+    const { length, lowercase, uppercase, digits, symbols } = genOpts;
+    generated = generatePassword({ length, lowercase, uppercase, digits, symbols });
   });
 
   function isLogin(item: DecryptedItem): boolean {
@@ -231,8 +250,33 @@
 <div class="wrap">
   <header class="head">
     <p class="brand">🔐 GhostPass</p>
-    <button class="icon-btn" title="Options (backend)" aria-label="Options" onclick={openOptions}>⚙</button>
+    <div class="head-actions">
+      <button class="icon-btn" title="Générer un mot de passe" aria-pressed={genOpen} onclick={toggleGenerator}>Générer</button>
+      <button class="icon-btn" title="Options (backend)" aria-label="Options" onclick={openOptions}>⚙</button>
+    </div>
   </header>
+
+  {#if genOpen}
+    <section class="generator" aria-label="Générateur de mots de passe">
+      <output class="gen-value">{generated}</output>
+      <div class="gen-actions">
+        <button class="fill-primary" onclick={() => copy("generated", generated)}>
+          {copiedId === "generated" ? "Copié ✓" : "Copier"}
+        </button>
+        <button class="icon-btn" onclick={regenerate}>Nouveau</button>
+      </div>
+      <label class="gen-length">
+        Longueur : {genOpts.length}
+        <input type="range" min="8" max="64" bind:value={genOpts.length} />
+      </label>
+      <div class="gen-sets">
+        <label><input type="checkbox" bind:checked={genOpts.lowercase} /> a-z</label>
+        <label><input type="checkbox" bind:checked={genOpts.uppercase} /> A-Z</label>
+        <label><input type="checkbox" bind:checked={genOpts.digits} /> 0-9</label>
+        <label><input type="checkbox" bind:checked={genOpts.symbols} /> !@#</label>
+      </div>
+    </section>
+  {/if}
 
   {#if !ready}
     <p class="muted">Chargement…</p>
