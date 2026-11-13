@@ -208,6 +208,12 @@ Environnement de construction :
   Node 22 LTS, npm 10
   macOS 15 ou Linux ; aucune dépendance système
 
+LE SEUL AVERTISSEMENT DE web-ext lint
+`web-ext lint` rend 0 erreur et 1 avertissement : UNSAFE_VAR_ASSIGNMENT (innerHTML) dans
+assets/popup-*.js. Il vient du **runtime de Svelte**, qui construit ses fragments en
+assignant un HTML **statique, produit à la compilation**, à un élément <template>. Il n'y a
+aucun innerHTML dans src/, et aucune donnée d'utilisateur ni de page ne passe par là.
+
 Le paquet ne contient aucun code distant. La directive 'wasm-unsafe-eval' de la CSP est
 exigée par Manifest V3 pour compiler le module .wasm **inclus dans le paquet** ; script-src
 reste 'self'.
@@ -253,8 +259,16 @@ L'archive **source** à joindre est le dépôt sans `node_modules`, `dist`, `dis
       scènes que la fiche App Store : le popup déverrouillé, le remplissage, les options.
       **À prendre sur un coffre fictif** — jamais sur un compte réel : voir l'incident des
       captures du site, 13 novembre 2026.
-- [ ] **Compte de démonstration** pour les relecteurs (§5), sur une instance jetable.
+- [ ] **Compte de démonstration** pour les relecteurs (§5). Il en existe un sur
+      `pass.ghostsuite.cloud` pour la revue d'Apple — neuf éléments, reconnexion vérifiée
+      le 24 septembre 2026 (voir `ghostpass/docs/appstore.md`) — mais **ses identifiants ne
+      sont écrits nulle part** dans les dépôts. Et avant de le donner à Mozilla, vérifier
+      que ses neuf éléments sont bien fictifs : les captures du site, elles, portaient des
+      données réelles jusqu'au 13 novembre 2026.
 - [ ] **`vendor/`** : archive npm du cœur WASM et sa source Rust, pour que `npm ci`
-      fonctionne sans le registre privé. Demande une fois le jeton GitLab.
+      fonctionne sans le registre privé. L'archive existe —
+      `stackops-ghostpass-crypto-wasm-0.0.1.tgz`, sha256
+      `ed3abc768175f0430a660aa49a1e060a9ed6c2e1245ca692d1a4c29a8e229fe4`, 150 Ko — mais
+      elle est sur le poste qui a le jeton, pas ici.
 - [ ] Vérifier le numéro de version : `package.json` est à `0.1.0`, et AMO refuse de
       republier un numéro déjà soumis.
