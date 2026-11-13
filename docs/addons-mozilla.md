@@ -32,7 +32,7 @@ données qu'AMO exige désormais de toute nouvelle extension.
 | Nom | `GhostPass` |
 | URL de la fiche | `ghostpass` (addons.mozilla.org/addon/ghostpass) |
 | Catégories (max. 2) | **Confidentialité et sécurité**, **Autre** |
-| Licence | MIT |
+| Licence | **Licence personnalisée** : AMO ne propose pas l'Elastic License 2.0 dans sa liste ; coller le texte de `LICENSE` |
 | Site d'assistance | `https://ghostsuite.cloud/ghostpass/` |
 | Adresse d'assistance | `contact@stackops.ch` |
 | Étiquettes | `password manager`, `self-hosted`, `zero-knowledge`, `autofill`, `privacy` |
@@ -96,7 +96,7 @@ chiffrés qu'il ne peut pas lire.
 Une fois le coffre déverrouillé, les identifiants déchiffrés vivent en mémoire dans la page
 d'arrière-plan, jamais sur le disque, et sont effacés au verrouillage.
 
-Logiciel libre, licence MIT. Le code est public : gitlab.com/stackopsplatform/products/ghostsuite/ghostpass-extension
+Code source public, sous Elastic License 2.0 : gitlab.com/stackopsplatform/products/ghostsuite/ghostpass-extension
 ```
 
 La version anglaise est la traduction mot pour mot de celle-ci ; elle vit dans le même
@@ -131,7 +131,7 @@ derived proof, and stores only encrypted blocks it cannot read.
 Once the vault is unlocked, the decrypted entries live in memory in the background page,
 never on disk, and are wiped on lock.
 
-Free software, MIT licence.
+Source available under the Elastic License 2.0.
 ```
 
 ---
