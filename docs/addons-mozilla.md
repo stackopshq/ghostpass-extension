@@ -96,7 +96,7 @@ chiffrés qu'il ne peut pas lire.
 Une fois le coffre déverrouillé, les identifiants déchiffrés vivent en mémoire dans la page
 d'arrière-plan, jamais sur le disque, et sont effacés au verrouillage.
 
-Code source public, sous Elastic License 2.0 : gitlab.com/stackopsplatform/products/ghostsuite/ghostpass-extension
+Code source public, sous Elastic License 2.0 : github.com/stackopshq/ghostpass-extension
 ```
 
 La version anglaise est la traduction mot pour mot de celle-ci ; elle vit dans le même
@@ -131,7 +131,7 @@ derived proof, and stores only encrypted blocks it cannot read.
 Once the vault is unlocked, the decrypted entries live in memory in the background page,
 never on disk, and are wiped on lock.
 
-Source available under the Elastic License 2.0.
+Source available under the Elastic License 2.0: github.com/stackopshq/ghostpass-extension
 ```
 
 ---
