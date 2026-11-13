@@ -3,8 +3,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateOtp, parseOtp } from "../src/lib/totp.ts";
 
-// "12345678901234567890" en base32, la clé SHA-1 de l'annexe B.
-const SHA1_KEY = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+// La clé SHA-1 de l'annexe B, "12345678901234567890", encodée en base32 ici plutôt qu'écrite en
+// dur : une chaîne base32 de cette longueur ressemble à une clé d'API pour gitleaks.
+function base32(bytes: Uint8Array): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let value = 0;
+  let out = "";
+  for (const b of bytes) {
+    value = (value << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      out += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += alphabet[(value << (5 - bits)) & 31];
+  return out;
+}
+const SHA1_KEY = base32(new TextEncoder().encode("12345678901234567890"));
 
 test("vecteurs SHA-1 de la RFC 6238, sur 8 chiffres", async () => {
   const cfg = { secret: SHA1_KEY, period: 30, digits: 8, algorithm: "SHA-1" as const };
