@@ -208,11 +208,11 @@ Environnement de construction :
   Node 22 LTS, npm 10
   macOS 15 ou Linux ; aucune dépendance système
 
-LE SEUL AVERTISSEMENT DE web-ext lint
-`web-ext lint` rend 0 erreur et 1 avertissement : UNSAFE_VAR_ASSIGNMENT (innerHTML) dans
-assets/popup-*.js. Il vient du **runtime de Svelte**, qui construit ses fragments en
-assignant un HTML **statique, produit à la compilation**, à un élément <template>. Il n'y a
-aucun innerHTML dans src/, et aucune donnée d'utilisateur ni de page ne passe par là.
+PAS DE innerHTML
+Svelte construit par défaut ses fragments en assignant un HTML statique à un <template>,
+ce que le validateur d'AMO signale (UNSAFE_VAR_ASSIGNMENT). svelte.config.js pose
+`fragments: "tree"` : les éléments sont créés un à un, et `web-ext lint` rend 0 erreur,
+0 avertissement.
 
 Le paquet ne contient aucun code distant. La directive 'wasm-unsafe-eval' de la CSP est
 exigée par Manifest V3 pour compiler le module .wasm **inclus dans le paquet** ; script-src
