@@ -201,3 +201,26 @@ li.match {
   color: #fff;
   background: var(--accent);
 }
+
+.otp {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.otp-code {
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.otp-left {
+  font-size: 0.72rem;
+  color: var(--ink-2);
+}

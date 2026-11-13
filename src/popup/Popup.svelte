@@ -3,6 +3,7 @@
   import { browser } from "../lib/browser.js";
   import type { DecryptedItem } from "../lib/crypto.js";
   import { hostFromUrl, matchesHost, suggestionsFor } from "../lib/site-match.js";
+  import { generateOtp, parseOtp } from "../lib/totp.js";
   import {
     type FillResult,
     type Message,
@@ -34,6 +35,45 @@
   let fillTimer: ReturnType<typeof setTimeout> | undefined;
 
   const CLIPBOARD_CLEAR_MS = 20_000;
+
+  // Les codes à usage unique des identifiants qui en ont, recalculés chaque seconde tant que le
+  // coffre est ouvert : le popup ne vit que le temps d'un coup d'œil.
+  let otps = $state<Record<string, { code: string; remaining: number }>>({});
+  $effect(() => {
+    if (!unlocked) return;
+    const withOtp = items.filter((i) => i.totp);
+    if (withOtp.length === 0) return;
+    const tick = async () => {
+      const next: Record<string, { code: string; remaining: number }> = {};
+      for (const i of withOtp) {
+        const cfg = parseOtp(i.totp ?? "");
+        if (!cfg) continue;
+        try {
+          next[i.id] = await generateOtp(cfg);
+        } catch {
+          /* secret illisible : pas de code plutôt qu'un faux */
+        }
+      }
+      otps = next;
+    };
+    void tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  });
+
+  function isLogin(item: DecryptedItem): boolean {
+    return (item.kind ?? "Login") === "Login";
+  }
+
+  function kindLabel(item: DecryptedItem): string {
+    if (item.kind === "Card") return item.cardLast4 ? `Carte · •••• ${item.cardLast4}` : "Carte";
+    if (item.kind === "SecureNote") return "Note sécurisée";
+    return item.kind ?? "";
+  }
+
+  function spaced(code: string): string {
+    return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+  }
   let clearTimer: ReturnType<typeof setTimeout> | undefined;
 
   function matches(item: DecryptedItem): boolean {
@@ -170,6 +210,10 @@
       if (!res?.ok) flashFill(res?.error ?? "Échec du remplissage.");
       else if (res.password || res.username) {
         flashFill(res.password ? "Rempli ✓" : "Identifiant rempli ✓");
+        // Comme Bitwarden : le code à usage unique part dans le presse-papiers, prêt pour l'écran
+        // suivant du site.
+        const otp = otps[item.id];
+        if (otp) await copy(`${item.id}:otp`, otp.code);
         // Le formulaire est rempli : le popup n'a plus rien à montrer, et il masquerait la page.
         setTimeout(() => window.close(), 600);
       }
@@ -223,23 +267,7 @@
         <p class="section-title">Pour {activeHost}</p>
         <ul>
           {#each suggestions as item (item.id)}
-            <li>
-              <div class="item-main">
-                <div class="item-name">{item.name}</div>
-                <div class="item-sub">{item.username || "—"}</div>
-                {#if item.team}
-                  <div class="item-team">{item.team.orgName} · {item.team.collectionName}</div>
-                {/if}
-              </div>
-              <button class="fill-primary" onclick={() => fill(item)}>Remplir</button>
-              <button
-                class="icon-btn"
-                title="Copier le mot de passe"
-                onclick={() => copy(item.id, item.password)}
-              >
-                {copiedId === item.id ? "✓" : "⧉"}
-              </button>
-            </li>
+            {@render row(item, true)}
           {/each}
         </ul>
       </section>
@@ -250,26 +278,7 @@
     {:else}
       <ul>
         {#each filtered as item (item.id)}
-          <li class:match={matches(item)}>
-            <div class="item-main">
-              <div class="item-name">
-                {item.name}{#if matches(item)}<span class="badge" title="Correspond à l'onglet actif">•</span>{/if}
-              </div>
-              <div class="item-sub">{revealed.has(item.id) ? item.password : item.username || "—"}</div>
-              {#if item.team}
-                <div class="item-team" title="Coffre d'équipe">{item.team.orgName} · {item.team.collectionName}</div>
-              {/if}
-            </div>
-            <button class="icon-btn fill-btn" title="Remplir dans l'onglet actif" aria-label="Remplir" onclick={() => fill(item)}>⌨</button>
-            <button class="icon-btn" title="Afficher" onclick={() => toggle(item.id)}>👁</button>
-            <button
-              class="icon-btn"
-              title="Copier le mot de passe"
-              onclick={() => copy(item.id, item.password)}
-            >
-              {copiedId === item.id ? "✓" : "⧉"}
-            </button>
-          </li>
+          {@render row(item, false)}
         {/each}
       </ul>
     {/if}
@@ -278,3 +287,40 @@
   {#if fillMsg}<p class="muted fill-msg">{fillMsg}</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}
 </div>
+
+{#snippet row(item: DecryptedItem, suggested: boolean)}
+  <li class:match={!suggested && matches(item)}>
+    <div class="item-main">
+      <div class="item-name">{item.name}</div>
+      {#if isLogin(item)}
+        <div class="item-sub">{revealed.has(item.id) ? item.password : item.username || "—"}</div>
+      {:else}
+        <div class="item-sub">{kindLabel(item)}</div>
+      {/if}
+      {#if otps[item.id]}
+        <button
+          class="otp"
+          title="Copier le code à usage unique"
+          onclick={() => copy(`${item.id}:otp`, otps[item.id]!.code)}
+        >
+          <span class="otp-code">{spaced(otps[item.id]!.code)}</span>
+          <span class="otp-left">{copiedId === `${item.id}:otp` ? "copié ✓" : `${otps[item.id]!.remaining} s`}</span>
+        </button>
+      {/if}
+      {#if item.team}
+        <div class="item-team" title="Coffre d'équipe">{item.team.orgName} · {item.team.collectionName}</div>
+      {/if}
+    </div>
+    {#if isLogin(item)}
+      {#if suggested}
+        <button class="fill-primary" onclick={() => fill(item)}>Remplir</button>
+      {:else}
+        <button class="icon-btn fill-btn" title="Remplir dans l'onglet actif" aria-label="Remplir" onclick={() => fill(item)}>⌨</button>
+        <button class="icon-btn" title="Afficher" onclick={() => toggle(item.id)}>👁</button>
+      {/if}
+      <button class="icon-btn" title="Copier le mot de passe" onclick={() => copy(item.id, item.password)}>
+        {copiedId === item.id ? "✓" : "⧉"}
+      </button>
+    {/if}
+  </li>
+{/snippet}
