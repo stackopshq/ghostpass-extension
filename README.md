@@ -36,16 +36,14 @@ ghostpass-extension/
 
 ## Prérequis
 
-Le cœur crypto est tiré du **registre npm du projet GitLab `ghostpass`**
-(`@stackops/ghostpass-crypto-wasm`). Authentifie npm avec un jeton GitLab portant le scope
-`read_api` :
+Le cœur crypto (`@stackops/ghostpass-crypto-wasm`) est **dans le dépôt** :
+`vendor/stackops-ghostpass-crypto-wasm-<version>.tgz`, et sa source Rust dans `vendor/source/`.
+`npm ci` ne demande aucun jeton ; un relecteur d'addons.mozilla.org reconstruit le paquet sans
+accès au registre privé.
 
-```bash
-export NODE_AUTH_TOKEN="<jeton GitLab, scope read_api>"
-```
-
-Publier une nouvelle version du WASM : lancer le job manuel **publier-wasm** du pipeline de `main`
-du projet `ghostpass`, puis bumper la version dans `package.json`.
+Monter le WASM : lancer le job manuel **publier-wasm** du pipeline de `main` du projet
+`ghostpass`, télécharger l'archive publiée dans `vendor/`, remplacer `vendor/source/` par les
+crates du même commit, puis mettre à jour `package.json` et `npm install --package-lock-only`.
 
 ## Développer
 

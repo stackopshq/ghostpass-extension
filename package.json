@@ -18,7 +18,7 @@
     "test": "node --test test/*.test.ts"
   },
   "dependencies": {
-    "@stackops/ghostpass-crypto-wasm": "^0.0.1"
+    "@stackops/ghostpass-crypto-wasm": "file:vendor/stackops-ghostpass-crypto-wasm-0.0.1.tgz"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.0",

@@ -19,13 +19,15 @@ manifest.browser_specific_settings = {
   gecko: {
     // Definitive once published on addons.mozilla.org: an id on a domain we own.
     id: "ghostpass@stackops.ch",
-    strict_min_version: "128.0",
+    // 140 (ESR) and 142 on Android are the first to read data_collection_permissions below.
+    strict_min_version: "140.0",
     // AMO asks every new extension to declare what it transmits. The e-mail address and the
     // login proof go to the GhostPass server the user configured, which may be one we host.
     data_collection_permissions: {
       required: ["personallyIdentifyingInfo", "authenticationInfo"],
     },
   },
+  gecko_android: { strict_min_version: "142.0" },
 };
 
 // `offscreen` est propre à Chromium. Firefox efface le presse-papiers depuis sa page
